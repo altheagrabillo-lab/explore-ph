@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ExplorePH: Ormoc Tourism Access Portal</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        netflixRed: '#E50914',
+                        netflixDarkRed: '#B81D24',
+                        netflixBlack: '#141414',
+                        netflixCard: '#181818',
+                        netflixGray: '#2F2F2F',
+                        netflixText: '#E5E5E5'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Leaflet OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        #map, #picker-map { height: 100%; width: 100%; z-index: 1; filter: brightness(0.85) contrast(1.1); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1rem); }
+        .carousel-container { scroll-behavior: smooth; cursor: grab; }
+        .carousel-container:active { cursor: grabbing; }
+    </style>
+</head>
+<body class="bg-black text-netflixText font-sans antialiased flex items-center justify-center min-h-screen p-2 sm:p-4 select-none">
+
+    <!-- MOBILE PHONE FRAME -->
+    <div class="w-[390px] h-[844px] bg-netflixBlack rounded-[48px] p-3 shadow-2xl ring-1 ring-zinc-800 relative overflow-hidden flex flex-col shrink-0">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-netflixBlack rounded-b-2xl z-50 flex items-center justify-center">
+            <div class="w-12 h-1 bg-zinc-800 rounded-full"></div>
+        </div>
+
+        <div class="w-full h-full bg-netflixBlack rounded-[36px] overflow-hidden flex flex-col relative pt-4 ring-1 ring-zinc-900">
+
+            <div id="toast-container" class="absolute top-8 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-xs pointer-events-none transition-all duration-300"></div>
+
+            <!-- VIEW 1: AUTHENTICATION SCREEN -->
+            <section id="auth-screen" class="flex-1 flex flex-col justify-between p-5 bg-gradient-to-b from-black via-zinc-950 to-netflixBlack text-white relative overflow-y-auto no-scrollbar">
+                <div class="pt-6 text-center relative z-10 shrink-0">
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-netflixRed text-white shadow-xl shadow-netflixRed/30 mb-2">
+                        <i data-lucide="compass" class="w-8 h-8"></i>
+                    </div>
+                    <h1 class="text-2xl font-black tracking-tight text-netflixRed uppercase">
+                        ExplorePH
+                    </h1>
+                    <p class="text-[10px] text-zinc-400 tracking-wider uppercase font-semibold">Ormoc Mobile Tourism Navigation</p>
+                </div>
+
+                <div class="bg-netflixCard border border-zinc-800 p-5 rounded-3xl shadow-2xl my-2 relative z-10 shrink-0">
+                    <div class="flex bg-zinc-900 p-1 rounded-xl mb-3 border border-zinc-800">
+                        <button id="tab-login" type="button" onclick="switchAuthTab('login')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-netflixRed text-white shadow">Sign In</button>
+                        <button id="tab-register" type="button" onclick="switchAuthTab('register')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-zinc-400 hover:text-white">Register</button>
+                    </div>
+
+                    <!-- LOGIN FORM -->
+                    <form id="login-form" onsubmit="handleLogin(event)" class="space-y-2.5">
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-300 mb-1">Username</label>
+                            <input type="text" id="login-username" required placeholder="Enter username" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-medium text-zinc-300">Password</label>
+                                <button type="button" onclick="openOtpModal()" class="text-[10px] text-netflixRed hover:underline font-bold cursor-pointer">Forgot?</button>
+                            </div>
+                            <div class="relative">
+                                <input type="password" id="login-password" required placeholder="Enter password" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-3 pr-10 py-2 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                <button type="button" onclick="togglePasswordVisibility('login-password', 'login-pass-icon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200">
+                                    <i data-lucide="eye" id="login-pass-icon" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" id="login-btn" class="w-full mt-2 py-2.5 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                            <span>Sign In</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+
+                    <!-- REGISTER FORM -->
+                    <form id="register-form" onsubmit="handleRegister(event)" class="space-y-2 hidden">
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Account Role</label>
+                            <select id="reg-role" required class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-netflixRed">
+                                <option value="user">Registered Tourist / Traveler</option>
+                                <option value="staff">Tourism Staff / Content Manager</option>
+                                <option value="admin">System Administrator</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Full Name</label>
+                            <input type="text" id="reg-fullname" required placeholder="Juan Dela Cruz" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Username</label>
+                            <input type="text" id="reg-username" required placeholder="Choose username" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Email</label>
+                            <input type="email" id="reg-email" required placeholder="name@example.com" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Password (8+ chars, A-Z, a-z, 0-9, symbol)</label>
+                            <div class="relative">
+                                <input type="password" id="reg-password" required placeholder="Complex password" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-3 pr-10 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                <button type="button" onclick="togglePasswordVisibility('reg-password', 'reg-pass-icon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200">
+                                    <i data-lucide="eye" id="reg-pass-icon" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Confirm Password</label>
+                            <div class="relative">
+                                <input type="password" id="reg-confirm-password" required placeholder="Repeat password" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl pl-3 pr-10 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                <button type="button" onclick="togglePasswordVisibility('reg-confirm-password', 'reg-confirm-pass-icon')" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200">
+                                    <i data-lucide="eye" id="reg-confirm-pass-icon" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" id="reg-btn" class="w-full mt-2 py-2 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                            <span>Create Account</span>
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+
+                    <!-- QUICK DEMO LOGINS -->
+                    <div class="mt-3 pt-2.5 border-t border-zinc-800 text-center">
+                        <p class="text-[9px] text-zinc-500 uppercase tracking-widest font-semibold mb-1">Quick Demo Logins</p>
+                        <div class="grid grid-cols-3 gap-1 mb-2">
+                            <button type="button" onclick="fillDemoCredentials('tourist_demo')" class="py-1 px-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-[9px] text-zinc-300 truncate">
+                                Tourist
+                            </button>
+                            <button type="button" onclick="fillDemoCredentials('staff_demo')" class="py-1 px-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-[9px] text-zinc-300 truncate">
+                                Tourism Staff
+                            </button>
+                            <button type="button" onclick="fillDemoCredentials('admin_demo')" class="py-1 px-1 bg-netflixRed/20 hover:bg-netflixRed/30 border border-netflixRed/40 rounded-lg text-[9px] text-netflixRed font-bold truncate">
+                                Admin
+                            </button>
+                        </div>
+
+                        <!-- GUEST ENTRY BUTTON -->
+                        <button type="button" onclick="continueAsGuest()" class="w-full py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="user-check" class="w-3.5 h-3.5 text-zinc-400"></i>
+                            <span>Continue as Guest User</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center text-[10px] text-zinc-600 pb-2 relative z-10 shrink-0">
+                    &copy; 2026 ExplorePH | Ormoc Tourism Access Portal
+                </div>
+            </section>
+
+            <!-- VIEW 2: MAIN DASHBOARD -->
+            <div id="main-screen" class="flex-1 flex flex-col hidden bg-netflixBlack overflow-hidden">
+                <header class="bg-black/90 backdrop-blur px-4 py-2.5 border-b border-zinc-800 flex items-center justify-between sticky top-0 z-30 shadow-md shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-netflixRed flex items-center justify-center text-white font-black text-xs shadow-md" id="user-avatar">U</div>
+                        <div>
+                            <h2 class="text-xs font-bold text-white leading-tight truncate max-w-[150px]" id="user-fullname">Welcome User</h2>
+                            <p class="text-[10px] text-zinc-400 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-netflixRed animate-pulse"></span>
+                                <span id="user-role-badge">USER</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <button onclick="handleHeaderAction()" id="header-action-btn" class="p-1.5 text-zinc-400 hover:text-netflixRed hover:bg-zinc-900 rounded-xl transition">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </header>
+
+                <main class="flex-1 overflow-y-auto no-scrollbar relative pb-16">
+                    <!-- SEARCH & FILTER BAR -->
+                    <div class="p-3 bg-zinc-950/80 border-b border-zinc-800 sticky top-0 z-20 backdrop-blur flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" id="search-input" onkeyup="filterDestinations()" placeholder="Search spot or address..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+                        </div>
+                        <select id="category-filter" onchange="filterDestinations()" class="bg-zinc-900 border border-zinc-800 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed">
+                            <option value="ALL">All Types</option>
+                            <option value="Nature">Nature</option>
+                            <option value="Adventure">Adventure</option>
+                            <option value="Leisure">Leisure</option>
+                            <option value="Heritage">Heritage</option>
+                        </select>
+                    </div>
+
+                    <!-- TAB 1: EXPLORE HOME -->
+                    <section id="panel-explore" class="p-4 space-y-4">
+                        <div class="p-4 rounded-2xl bg-gradient-to-r from-netflixRed via-zinc-900 to-black text-white border border-zinc-800 shadow-xl">
+                            <h3 class="text-base font-black uppercase tracking-wider">Discover Ormoc</h3>
+                            <p class="text-[11px] text-zinc-300 mt-0.5">Explore tourist spots, view maps & travel details.</p>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Destinations</h4>
+                                <span class="text-xs text-netflixRed font-bold" id="destination-count">0 Spots</span>
+                            </div>
+                            <div id="destinations-list" class="space-y-4"></div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 2 (TOURIST): SAVED SPOT LIST -->
+                    <section id="panel-saved" class="p-4 space-y-4 hidden">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">My Saved Watchlist</h4>
+                            <span class="text-xs text-netflixRed font-bold" id="saved-count">0 Spots</span>
+                        </div>
+                        <div id="saved-destinations-list" class="space-y-4"></div>
+                    </section>
+
+                    <!-- TAB 3: CONTENT MANAGER (STAFF) WITH MAP PIN INDICATOR -->
+                    <section id="panel-submit" class="p-4 space-y-4 hidden">
+                        <div class="bg-netflixCard p-4 rounded-2xl border border-zinc-800 shadow-md">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Add / Manage Destination</h3>
+                                <span class="bg-zinc-800 text-netflixRed text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">LGU Staff</span>
+                            </div>
+                            <form onsubmit="handleDestinationSubmit(event)" class="space-y-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Spot Name</label>
+                                    <input type="text" id="sub-name" required placeholder="e.g. Lake Danao" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Category</label>
+                                    <select id="sub-category" required class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed">
+                                        <option value="Nature">Nature</option>
+                                        <option value="Adventure">Adventure</option>
+                                        <option value="Leisure">Leisure</option>
+                                        <option value="Heritage">Heritage</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- MAP PIN LOCATION SELECTOR -->
+                                <div>
+                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1 flex justify-between items-center">
+                                        <span>Pin Location on Map</span>
+                                        <span id="pin-coords-text" class="text-[9px] text-netflixRed font-mono font-bold">Click map to set pin</span>
+                                    </label>
+                                    <div class="w-full h-36 rounded-xl border border-zinc-800 overflow-hidden relative shadow-inner">
+                                        <div id="picker-map"></div>
+                                    </div>
+                                    <input type="hidden" id="sub-lat" value="11.0064" />
+                                    <input type="hidden" id="sub-lng" value="124.6075" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Location Address</label>
+                                    <input type="text" id="sub-address" required placeholder="Brgy. Cabintan, Ormoc City" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Description & Fee Schedule</label>
+                                    <textarea id="sub-desc" required rows="2" placeholder="Hours: 6am - 6pm. Fees: ₱50..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Image URLs (comma separated)</label>
+                                    <input type="text" id="sub-images" placeholder="https://domain.com/photo1.jpg, https://..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                </div>
+                                <button type="submit" id="sub-btn" class="w-full py-2 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-xs rounded-xl shadow transition">Submit Tourism Content</button>
+                            </form>
+                        </div>
+
+                        <div>
+                            <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">My Content Submissions</h4>
+                            <div id="my-submissions-list" class="space-y-2"></div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 4: ADMIN APPROVALS & MODERATION -->
+                    <section id="panel-approvals" class="p-4 space-y-3 hidden">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Pending Destination Proposals</h3>
+                            <span class="bg-netflixRed/20 text-netflixRed text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Admin View</span>
+                        </div>
+                        <div id="pending-requests-list" class="space-y-3"></div>
+                    </section>
+
+                    <!-- TAB 5: ADMIN LOGS & ANALYTICS -->
+                    <section id="panel-logs" class="p-4 space-y-3 hidden">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-netflixCard p-3 rounded-2xl border border-zinc-800 text-center">
+                                <span class="text-xs text-zinc-400 font-medium">Total Spots</span>
+                                <h4 class="text-lg font-black text-netflixRed mt-0.5" id="stat-total-spots">0</h4>
+                            </div>
+                            <div class="bg-netflixCard p-3 rounded-2xl border border-zinc-800 text-center">
+                                <span class="text-xs text-zinc-400 font-medium">Approved Content</span>
+                                <h4 class="text-lg font-black text-emerald-400 mt-0.5" id="stat-approved-spots">0</h4>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center pt-2">
+                            <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">System Audit Trail</h3>
+                            <span class="bg-zinc-800 text-zinc-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Security Logs</span>
+                        </div>
+                        <div class="bg-netflixCard rounded-2xl border border-zinc-800 shadow-sm overflow-hidden">
+                            <div class="max-h-[350px] overflow-y-auto divide-y divide-zinc-800/60" id="log-trail-list"></div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 6: MAP -->
+                    <section id="panel-map" class="h-full flex flex-col hidden relative">
+                        <div class="p-2.5 bg-black/80 border-b border-zinc-800 flex items-center justify-between z-10">
+                            <span class="text-xs font-bold text-zinc-200 flex items-center gap-1">
+                                <i data-lucide="navigation" class="w-3.5 h-3.5 text-netflixRed"></i> Ormoc GPS Route
+                            </span>
+                            <button onclick="recenterMap()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-semibold rounded-lg">Center</button>
+                        </div>
+                        <div class="flex-1 relative">
+                            <div id="map" class="w-full h-full min-h-[400px]"></div>
+                        </div>
+                    </section>
+
+                    <!-- TAB 7: PROFILE -->
+                    <section id="panel-profile" class="p-4 space-y-4 hidden">
+                        <div class="bg-netflixCard p-5 rounded-2xl border border-zinc-800 text-center shadow-md">
+                            <div class="w-16 h-16 bg-netflixRed rounded-full mx-auto flex items-center justify-center text-white text-xl font-black mb-2 shadow-lg">
+                                <span id="profile-avatar-large">U</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-white" id="profile-name">User Full Name</h3>
+                            <p class="text-xs text-zinc-400" id="profile-email">user@example.com</p>
+                            <span class="inline-block mt-2 px-3 py-0.5 bg-zinc-900 border border-zinc-800 text-netflixRed rounded-full text-[9px] font-bold uppercase" id="profile-role">User</span>
+                        </div>
+                        <button onclick="openLogoutModal()" class="w-full py-2.5 bg-zinc-900 border border-zinc-800 hover:border-netflixRed text-netflixRed font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                            <span>Sign Out Account</span>
+                        </button>
+                    </section>
+                </main>
+
+                <!-- DYNAMIC BOTTOM NAVIGATION BAR -->
+                <nav class="bg-black border-t border-zinc-800 absolute bottom-0 left-0 right-0 z-30 pb-safe shrink-0">
+                    <div class="flex justify-around items-center h-14 px-2" id="nav-container"></div>
+                </nav>
+
+                <!-- REVIEWS & RATINGS MODAL -->
+                <div id="reviews-modal" class="absolute inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col p-4 hidden">
+                    <div class="flex justify-between items-center mb-3 pt-4 border-b border-zinc-800 pb-2">
+                        <div>
+                            <h4 class="text-xs font-bold text-white uppercase" id="review-modal-title">Reviews</h4>
+                            <p class="text-[10px] text-zinc-400">Visitor feedback and ratings</p>
+                        </div>
+                        <button onclick="closeReviewsModal()" class="p-1.5 bg-zinc-800 text-white rounded-full">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-3 no-scrollbar" id="reviews-list-container"></div>
+
+                    <!-- ADD REVIEW FORM -->
+                    <div id="add-review-box" class="pt-3 border-t border-zinc-800 shrink-0">
+                        <form onsubmit="handleReviewSubmit(event)" class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[11px] font-bold text-zinc-300">Leave Feedback</span>
+                                <select id="review-rating-input" class="bg-zinc-900 border border-zinc-800 text-xs text-amber-400 font-bold px-2 py-1 rounded-lg">
+                                    <option value="5">★ 5 - Excellent</option>
+                                    <option value="4">★ 4 - Very Good</option>
+                                    <option value="3">★ 3 - Average</option>
+                                    <option value="2">★ 2 - Poor</option>
+                                    <option value="1">★ 1 - Terrible</option>
+                                </select>
+                            </div>
+                            <textarea id="review-comment-input" required rows="2" placeholder="Write your feedback..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed"></textarea>
+                            <button type="submit" class="w-full py-2 bg-netflixRed text-white font-bold text-xs rounded-xl shadow">Post Review</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- LOGOUT MODAL -->
+                <div id="logout-modal" class="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+                    <div class="bg-netflixCard rounded-3xl max-w-xs w-full p-5 shadow-2xl border border-zinc-800 text-center">
+                        <div class="w-10 h-10 bg-netflixRed/20 text-netflixRed rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-white">Confirm Sign Out</h3>
+                        <p class="text-xs text-zinc-400 mt-1 mb-5">Are you sure you want to end your session?</p>
+                        <div class="flex gap-2.5">
+                            <button onclick="closeLogoutModal()" class="flex-1 py-2 bg-zinc-800 text-zinc-300 font-bold text-xs rounded-xl">Cancel</button>
+                            <button onclick="confirmLogout()" class="flex-1 py-2 bg-netflixRed text-white font-bold text-xs rounded-xl shadow">Sign Out</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- OTP ACCOUNT RECOVERY MODAL (GLOBAL OVERLAY) -->
+            <div id="otp-modal" class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col p-5 hidden">
+                <div class="flex justify-between items-center border-b border-zinc-800 pb-2 mb-3 pt-4">
+                    <h4 class="text-xs font-bold text-white uppercase">OTP Account Recovery</h4>
+                    <button type="button" onclick="closeOtpModal()" class="p-1.5 bg-zinc-800 text-white rounded-full">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3 my-auto">
+                    <!-- STEP 1: REQUEST OTP -->
+                    <div id="otp-step-1" class="space-y-2">
+                        <p class="text-[11px] text-zinc-400 leading-relaxed">Enter your registered username to generate a security OTP code.</p>
+                        <input type="text" id="otp-username" placeholder="Username" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                        <button type="button" onclick="requestOtpCode()" class="w-full py-2 bg-netflixRed text-white font-bold text-xs rounded-xl shadow">Request OTP Code</button>
+                    </div>
+
+                    <!-- STEP 2: DISPLAY OTP AND RESET PASSWORD -->
+                    <div id="otp-step-2" class="space-y-2.5 hidden">
+                        <div class="p-3 bg-zinc-900 border border-netflixRed/40 rounded-2xl text-center space-y-1">
+                            <span class="text-[10px] text-zinc-400 font-semibold uppercase">Generated OTP Code</span>
+                            <div class="flex items-center justify-center gap-2">
+                                <span id="generated-otp-display" class="text-xl font-black text-netflixRed tracking-widest">######</span>
+                                <button type="button" onclick="copyOtpToClipboard()" class="p-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-white" title="Copy OTP">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                            <p class="text-[9px] text-zinc-500">Recorded in database table `users.otp_code`</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Enter Received OTP</label>
+                            <input type="text" id="otp-input-code" placeholder="6-digit code" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">New Password</label>
+                            <input type="password" id="otp-new-password" placeholder="Complex new password" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                        </div>
+
+                        <button type="button" onclick="verifyOtpAndReset()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow">Reset Password & Unlock</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://eylgmztvmdmyplaqimwo.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5bGdtenR2bWRteXBsYXFpbXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2ODAwMzMsImV4cCI6MjEwNzI1NjAzM30.ZU_w39v1Ay7YSrr4MKgxAIZv1CoyBn0rQppNqlq8ung";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = JSON.parse(localStorage.getItem('exploreph_user')) || null;
+        let isGuestMode = localStorage.getItem('exploreph_guest') === 'true';
+        let cachedDestinations = [];
+        let savedSpotIds = JSON.parse(localStorage.getItem('exploreph_saved_ids')) || [];
+        let activeReviewDestinationId = null;
+        let leafletMap = null;
+        let pickerMap = null;
+        let pickerMarker = null;
+        let mapMarkers = [];
+        let generatedOtp = "";
+        let otpTargetUser = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            if (currentUser || isGuestMode) showMainDashboard();
+            else showAuthScreen();
+        });
+
+        function togglePasswordVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        function switchAuthTab(tab) {
+            document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('register-form').classList.toggle('hidden', tab !== 'register');
+            document.getElementById('tab-login').className = tab === 'login' ? "flex-1 py-1.5 text-xs font-bold rounded-lg bg-netflixRed text-white shadow" : "flex-1 py-1.5 text-xs font-bold rounded-lg text-zinc-400 hover:text-white";
+            document.getElementById('tab-register').className = tab === 'register' ? "flex-1 py-1.5 text-xs font-bold rounded-lg bg-netflixRed text-white shadow" : "flex-1 py-1.5 text-xs font-bold rounded-lg text-zinc-400 hover:text-white";
+        }
+
+        function fillDemoCredentials(type) {
+            switchAuthTab('login');
+            if (type === 'admin_demo') {
+                document.getElementById('login-username').value = 'admin_demo';
+                showToast('info', 'Admin credentials auto-filled.');
+            } else if (type === 'staff_demo' || type === 'guide_demo') {
+                document.getElementById('login-username').value = 'guide_demo';
+                showToast('info', 'Tourism Staff credentials auto-filled.');
+            } else {
+                document.getElementById('login-username').value = 'tourist_demo';
+                showToast('info', 'Tourist credentials auto-filled.');
+            }
+            document.getElementById('login-password').value = 'Password123!';
+        }
+
+        function continueAsGuest() {
+            isGuestMode = true;
+            currentUser = null;
+            localStorage.setItem('exploreph_guest', 'true');
+            localStorage.removeItem('exploreph_user');
+            showToast('info', 'Browsing as Guest user.');
+            showMainDashboard();
+        }
+
+        async function logTrail(userId, username, action, details) {
+            await supabaseClient.from('log_trails').insert([{ user_id: userId, username_used: username, action, details }]);
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            const { data: users, error } = await supabaseClient.from('users').select('*').eq('username', username);
+
+            if (error || !users || users.length === 0) {
+                await logTrail(null, username, "FAILED_LOGIN", "Account does not exist.");
+                showToast('error', 'Account does not exist.');
+                return;
+            }
+
+            const user = users[0];
+
+            if (user.lockout_until && new Date(user.lockout_until) > new Date()) {
+                const remaining = Math.ceil((new Date(user.lockout_until) - new Date()) / 1000);
+                await logTrail(user.id, username, "LOCKOUT_BLOCKED", `Login attempt blocked during active lockout (${remaining}s remaining).`);
+                showToast('error', `Account locked. Please try again in ${remaining}s.`);
+                return;
+            }
+
+            if (user.password !== password) {
+                const failed = (user.failed_attempts || 0) + 1;
+                let lockout_until = null;
+
+                if (failed >= 3) {
+                    const lockSeconds = 60 * (failed - 2);
+                    lockout_until = new Date(Date.now() + lockSeconds * 1000).toISOString();
+                    await supabaseClient.from('users').update({ failed_attempts: failed, lockout_until }).eq('id', user.id);
+                    await logTrail(user.id, username, "ACCOUNT_LOCKOUT", `Locked for ${lockSecs}s after ${failed} failed attempts.`);
+                    showToast('error', `3 failed attempts! Account locked for ${lockSecs} seconds.`);
+                } else {
+                    await supabaseClient.from('users').update({ failed_attempts: failed }).eq('id', user.id);
+                    await logTrail(user.id, username, "FAILED_LOGIN", `Incorrect password. Attempt ${failed}/3.`);
+                    showToast('error', `Incorrect password. Attempt ${failed}/3.`);
+                }
+                return;
+            }
+
+            await supabaseClient.from('users').update({ failed_attempts: 0, lockout_until: null }).eq('id', user.id);
+            await logTrail(user.id, username, "SUCCESS_LOGIN", "User authenticated successfully.");
+
+            isGuestMode = false;
+            currentUser = user;
+            localStorage.removeItem('exploreph_guest');
+            localStorage.setItem('exploreph_user', JSON.stringify(user));
+            showToast('success', 'Sign in successful.');
+            showMainDashboard();
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const role = document.getElementById('reg-role').value;
+            const full_name = document.getElementById('reg-fullname').value.trim();
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+            const confirm_password = document.getElementById('reg-confirm-password').value.trim();
+
+            if (password !== confirm_password) {
+                showToast('error', 'Passwords do not match.');
+                return;
+            }
+
+            const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+            if (!passwordPattern.test(password)) {
+                showToast('error', 'Password must be 8+ chars with A-Z, a-z, 0-9 & special char.');
+                return;
+            }
+
+            const { data, error } = await supabaseClient.from('users').insert([{ full_name, username, email, password, role }]).select();
+
+            if (error) {
+                showToast('error', 'Username or Email is already registered.');
+                return;
+            }
+
+            await logTrail(data[0].id, username, "USER_REGISTER", `Registered as ${role.toUpperCase()}`);
+            showToast('success', 'Account created! Please sign in.');
+            switchAuthTab('login');
+        }
+
+        function openOtpModal() {
+            document.getElementById('otp-step-1').classList.remove('hidden');
+            document.getElementById('otp-step-2').classList.add('hidden');
+            document.getElementById('otp-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeOtpModal() {
+            document.getElementById('otp-modal').classList.add('hidden');
+        }
+
+        async function requestOtpCode() {
+            const username = document.getElementById('otp-username').value.trim();
+            if (!username) {
+                showToast('error', 'Enter your username.');
+                return;
+            }
+
+            const { data: users, error } = await supabaseClient.from('users').select('*').eq('username', username);
+
+            if (error || !users || users.length === 0) {
+                showToast('error', 'Username not found.');
+                return;
+            }
+
+            otpTargetUser = users[0];
+            generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+            await supabaseClient.from('users').update({ otp_code: generatedOtp, otp_expires_at: expiresAt }).eq('id', otpTargetUser.id);
+            await logTrail(otpTargetUser.id, username, "OTP_REQUEST", `Generated OTP: ${generatedOtp}`);
+
+            document.getElementById('generated-otp-display').innerText = generatedOtp;
+            document.getElementById('otp-step-1').classList.add('hidden');
+            document.getElementById('otp-step-2').classList.remove('hidden');
+            showToast('success', 'OTP Code generated!');
+            lucide.createIcons();
+        }
+
+        function copyOtpToClipboard() {
+            navigator.clipboard.writeText(generatedOtp);
+            showToast('info', 'OTP copied to clipboard!');
+        }
+
+        async function verifyOtpAndReset() {
+            const inputOtp = document.getElementById('otp-input-code').value.trim();
+            const newPassword = document.getElementById('otp-new-password').value.trim();
+
+            if (inputOtp !== generatedOtp) {
+                showToast('error', 'Invalid OTP code.');
+                return;
+            }
+
+            const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+            if (!passwordPattern.test(newPassword)) {
+                showToast('error', 'New password must be 8+ chars (A-Z, a-z, 0-9, symbol).');
+                return;
+            }
+
+            await supabaseClient.from('users').update({
+                password: newPassword,
+                failed_attempts: 0,
+                lockout_until: null,
+                otp_code: null
+            }).eq('id', otpTargetUser.id);
+
+            await logTrail(otpTargetUser.id, otpTargetUser.username, "PASSWORD_RESET_OTP", "Password updated successfully via OTP recovery.");
+            showToast('success', 'Password reset! Please sign in.');
+            closeOtpModal();
+            switchAuthTab('login');
+        }
+
+        function showAuthScreen() {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('main-screen').classList.add('hidden');
+        }
+
+        function handleHeaderAction() {
+            if (isGuestMode) {
+                showAuthScreen();
+            } else {
+                openLogoutModal();
+            }
+        }
+
+        function renderBottomNav(role) {
+            const navContainer = document.getElementById('nav-container');
+            let navItems = [];
+
+            if (isGuestMode) {
+                navItems = [
+                    { id: 'explore', icon: 'compass', label: 'Explore' },
+                    { id: 'map', icon: 'map', label: 'Map' }
+                ];
+            } else if (role === 'admin') {
+                navItems = [
+                    { id: 'explore', icon: 'compass', label: 'Explore' },
+                    { id: 'approvals', icon: 'check-square', label: 'Review' },
+                    { id: 'logs', icon: 'shield-check', label: 'Logs' },
+                    { id: 'map', icon: 'map', label: 'Map' },
+                    { id: 'profile', icon: 'user', label: 'Profile' }
+                ];
+            } else if (role === 'staff' || role === 'organizer') {
+                navItems = [
+                    { id: 'explore', icon: 'compass', label: 'Explore' },
+                    { id: 'submit', icon: 'plus-circle', label: 'Propose' },
+                    { id: 'map', icon: 'map', label: 'Map' },
+                    { id: 'profile', icon: 'user', label: 'Profile' }
+                ];
+            } else {
+                navItems = [
+                    { id: 'explore', icon: 'compass', label: 'Explore' },
+                    { id: 'saved', icon: 'bookmark', label: 'Saved' },
+                    { id: 'map', icon: 'map', label: 'Map' },
+                    { id: 'profile', icon: 'user', label: 'Profile' }
+                ];
+            }
+
+            navContainer.innerHTML = navItems.map(item => `
+                <button onclick="switchTab('${item.id}')" id="nav-${item.id}" class="nav-btn flex flex-col items-center gap-0.5 text-zinc-500 hover:text-zinc-200 transition">
+                    <i data-lucide="${item.icon}" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-medium">${item.label}</span>
+                </button>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        async function showMainDashboard() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-screen').classList.remove('hidden');
+
+            const role = isGuestMode ? 'GUEST' : (currentUser.role || 'user').toLowerCase();
+
+            document.getElementById('user-fullname').innerText = isGuestMode ? 'Guest Traveler' : (currentUser.full_name || currentUser.username);
+            document.getElementById('profile-name').innerText = isGuestMode ? 'Guest Traveler' : (currentUser.full_name || currentUser.username);
+            document.getElementById('profile-email').innerText = isGuestMode ? 'unauthenticated' : currentUser.email;
+            document.getElementById('user-role-badge').innerText = role.toUpperCase();
+            document.getElementById('profile-role').innerText = role.toUpperCase();
+
+            const headerBtn = document.getElementById('header-action-btn');
+            headerBtn.innerHTML = isGuestMode ? `<i data-lucide="log-in" class="w-4 h-4"></i>` : `<i data-lucide="log-out" class="w-4 h-4"></i>`;
+
+            renderBottomNav(role);
+
+            if (role === 'admin') {
+                fetchPendingRequests();
+                fetchLogs();
+            } else if (role === 'staff' || role === 'organizer') {
+                fetchMySubmissions();
+            }
+
+            switchTab('explore');
+            fetchDestinations();
+        }
+
+        async function fetchDestinations() {
+            const { data, error } = await supabaseClient.from('destinations').select('*').eq('status', 'approved').order('id', { ascending: false });
+            if (!error) {
+                cachedDestinations = data || [];
+                renderDestinations(cachedDestinations);
+                renderSavedDestinations();
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total-spots').innerText = cachedDestinations.length;
+            document.getElementById('stat-approved-spots').innerText = cachedDestinations.filter(d => d.status === 'approved').length;
+        }
+
+        async function fetchMySubmissions() {
+            if (!currentUser) return;
+            const { data, error } = await supabaseClient.from('destinations').select('*').eq('submitted_by', currentUser.id).order('id', { ascending: false });
+            if (!error) renderMySubmissions(data || []);
+        }
+
+        async function fetchPendingRequests() {
+            const { data, error } = await supabaseClient.from('destinations').select('*, users(username)').eq('status', 'pending').order('id', { ascending: false });
+            if (!error) renderPendingRequests(data || []);
+        }
+
+        async function fetchLogs() {
+            const { data, error } = await supabaseClient.from('log_trails').select('*').order('created_at', { ascending: false }).limit(50);
+            if (!error) renderLogs(data || []);
+        }
+
+        function toggleSaveSpot(spotId) {
+            if (isGuestMode) {
+                showToast('error', 'Please Sign In to save favorite spots.');
+                return;
+            }
+            if (savedSpotIds.includes(spotId)) {
+                savedSpotIds = savedSpotIds.filter(id => id !== spotId);
+                showToast('info', 'Removed from watchlist.');
+            } else {
+                savedSpotIds.push(spotId);
+                showToast('success', 'Destination bookmarked!');
+            }
+            localStorage.setItem('exploreph_saved_ids', JSON.stringify(savedSpotIds));
+            renderDestinations(cachedDestinations);
+            renderSavedDestinations();
+        }
+
+        function filterDestinations() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const category = document.getElementById('category-filter').value;
+
+            const filtered = cachedDestinations.filter(spot => {
+                const matchesQuery = spot.name.toLowerCase().includes(query) || spot.location_address.toLowerCase().includes(query);
+                const matchesCategory = category === 'ALL' || spot.category === category;
+                return matchesQuery && matchesCategory;
+            });
+
+            renderDestinations(filtered);
+        }
+
+        function scrollCarousel(containerId, direction) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                const scrollAmount = container.clientWidth;
+                container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+            }
+        }
+
+        function makeDraggable(container) {
+            let isDown = false;
+            let startX, scrollLeft;
+
+            container.addEventListener('mousedown', (e) => {
+                isDown = true;
+                startX = e.pageX - container.offsetLeft;
+                scrollLeft = container.scrollLeft;
+            });
+            container.addEventListener('mouseleave', () => { isDown = false; });
+            container.addEventListener('mouseup', () => { isDown = false; });
+            container.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - container.offsetLeft;
+                const walk = (x - startX) * 2;
+                container.scrollLeft = scrollLeft - walk;
+            });
+        }
+
+        // INITIALIZE MINI PICKER MAP FOR STAFF
+        function initPickerMap() {
+            if (!pickerMap) {
+                pickerMap = L.map('picker-map').setView([11.0064, 124.6075], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(pickerMap);
+
+                pickerMap.on('click', (e) => {
+                    const lat = e.latlng.lat;
+                    const lng = e.latlng.lng;
+
+                    document.getElementById('sub-lat').value = lat;
+                    document.getElementById('sub-lng').value = lng;
+                    document.getElementById('pin-coords-text').innerText = `Pinned: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+                    if (pickerMarker) pickerMap.removeLayer(pickerMarker);
+                    pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
+
+                    // Reverse geocode address automatically
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.display_name) {
+                                document.getElementById('sub-address').value = data.display_name.split(',').slice(0, 3).join(',');
+                            }
+                        }).catch(() => {});
+                });
+            }
+            pickerMap.invalidateSize();
+        }
+
+        async function openReviewsModal(spotId, spotName) {
+            activeReviewDestinationId = spotId;
+            document.getElementById('review-modal-title').innerText = `${spotName} Reviews`;
+
+            document.getElementById('add-review-box').classList.toggle('hidden', isGuestMode);
+
+            const { data: reviews, error } = await supabaseClient.from('reviews').select('*').eq('destination_id', spotId).order('created_at', { ascending: false });
+
+            const container = document.getElementById('reviews-list-container');
+            if (!error && reviews && reviews.length > 0) {
+                container.innerHTML = reviews.map(r => `
+                    <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800 space-y-1">
+                        <div class="flex justify-between items-center text-xs font-bold text-white">
+                            <span>${r.username}</span>
+                            <span class="text-amber-400">★ ${r.rating}</span>
+                        </div>
+                        <p class="text-[11px] text-zinc-300">${r.comment}</p>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">No reviews submitted yet.</p>`;
+            }
+
+            document.getElementById('reviews-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeReviewsModal() {
+            document.getElementById('reviews-modal').classList.add('hidden');
+        }
+
+        async function handleReviewSubmit(e) {
+            e.preventDefault();
+            if (isGuestMode || !currentUser) {
+                showToast('error', 'Please Sign In to submit reviews.');
+                return;
+            }
+
+            const rating = parseInt(document.getElementById('review-rating-input').value);
+            const comment = document.getElementById('review-comment-input').value.trim();
+
+            const { error } = await supabaseClient.from('reviews').insert([{
+                destination_id: activeReviewDestinationId,
+                user_id: currentUser.id,
+                username: currentUser.username,
+                rating,
+                comment
+            }]);
+
+            if (!error) {
+                showToast('success', 'Review posted!');
+                document.getElementById('review-comment-input').value = '';
+                openReviewsModal(activeReviewDestinationId, 'Destination');
+            } else {
+                showToast('error', 'Failed to post review.');
+            }
+        }
+
+        function visitLocation(lat, lng, name) {
+            switchTab('map');
+            if (leafletMap) {
+                leafletMap.setView([lat, lng], 14);
+                mapMarkers.forEach(m => {
+                    if (m.getLatLng().lat === lat && m.getLatLng().lng === lng) {
+                        m.openPopup();
+                    }
+                });
+            }
+        }
+
+        function renderDestinations(items) {
+            const container = document.getElementById('destinations-list');
+            document.getElementById('destination-count').innerText = `${items.length} Spots`;
+
+            if (items.length === 0) {
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">No destinations match filter.</p>`;
+                return;
+            }
+
+            container.innerHTML = items.map((spot) => {
+                const isSaved = savedSpotIds.includes(spot.id);
+                const images = spot.images ? (typeof spot.images === 'string' ? JSON.parse(spot.images) : spot.images) : [];
+                const carouselId = `carousel-explore-${spot.id}`;
+
+                const carouselHtml = images.length > 0 
+                    ? images.map(img => `
+                        <div class="snap-center shrink-0 w-full h-44 bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-800">
+                            <img src="${img}" alt="${spot.name}" class="w-full h-full object-cover pointer-events-none" />
+                        </div>
+                    `).join('')
+                    : `<div class="snap-center shrink-0 w-full h-44 bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-600 text-xs">No image provided</div>`;
+
+                return `
+                    <div class="bg-netflixCard rounded-2xl border border-zinc-800 shadow-lg p-3.5 space-y-2.5">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-[9px] font-bold text-netflixRed bg-netflixRed/10 border border-netflixRed/20 px-2 py-0.5 rounded-full uppercase">${spot.category}</span>
+                                <h5 class="text-xs font-bold text-white mt-1">${spot.name}</h5>
+                                <p class="text-[10px] text-zinc-400">${spot.location_address}</p>
+                            </div>
+                            <button onclick="toggleSaveSpot(${spot.id})" class="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 ${isSaved ? 'text-netflixRed' : 'text-zinc-500 hover:text-zinc-300'}">
+                                <i data-lucide="bookmark" class="w-4 h-4 ${isSaved ? 'fill-netflixRed' : ''}"></i>
+                            </button>
+                        </div>
+
+                        <div class="relative group">
+                            ${images.length > 1 ? `
+                                <button onclick="scrollCarousel('${carouselId}', -1)" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="scrollCarousel('${carouselId}', 1)" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                </button>
+                            ` : ''}
+
+                            <div id="${carouselId}" class="carousel-container flex gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-xl py-0.5">
+                                ${carouselHtml}
+                            </div>
+                        </div>
+
+                        <p class="text-[11px] text-zinc-300 leading-relaxed">${spot.description}</p>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-zinc-800/80">
+                            <button onclick="openReviewsModal(${spot.id}, '${spot.name}')" class="text-amber-400 text-[10px] font-bold flex items-center gap-1 hover:underline">
+                                <span>★ ${spot.rating || '4.8'} Reviews</span>
+                            </button>
+                            <button onclick="visitLocation(${spot.latitude}, ${spot.longitude}, '${spot.name}')" class="px-3.5 py-1.5 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-[10px] rounded-lg shadow transition flex items-center gap-1">
+                                <i data-lucide="navigation" class="w-3 h-3"></i>
+                                <span>Visit Location</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+
+            items.forEach(spot => {
+                const el = document.getElementById(`carousel-explore-${spot.id}`);
+                if (el) makeDraggable(el);
+            });
+        }
+
+        function renderSavedDestinations() {
+            const container = document.getElementById('saved-destinations-list');
+            const savedItems = cachedDestinations.filter(d => savedSpotIds.includes(d.id));
+            document.getElementById('saved-count').innerText = `${savedItems.length} Spots`;
+
+            if (savedItems.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-netflixCard p-6 rounded-2xl border border-zinc-800 text-center shadow-md">
+                        <div class="w-12 h-12 bg-netflixRed/10 rounded-full flex items-center justify-center mx-auto mb-2 text-netflixRed">
+                            <i data-lucide="bookmark-check" class="w-6 h-6"></i>
+                        </div>
+                        <h5 class="text-xs font-bold text-white">Your Watchlist is Empty</h5>
+                        <p class="text-[11px] text-zinc-400 mt-1">Bookmark spots from the Explore tab to save them here.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = savedItems.map(spot => {
+                const images = spot.images ? (typeof spot.images === 'string' ? JSON.parse(spot.images) : spot.images) : [];
+                const carouselId = `carousel-saved-${spot.id}`;
+
+                const carouselHtml = images.length > 0 
+                    ? images.map(img => `
+                        <div class="snap-center shrink-0 w-full h-36 bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-800">
+                            <img src="${img}" alt="${spot.name}" class="w-full h-full object-cover pointer-events-none" />
+                        </div>
+                    `).join('')
+                    : `<div class="snap-center shrink-0 w-full h-36 bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-600 text-xs">No image provided</div>`;
+
+                return `
+                    <div class="bg-netflixCard p-3.5 rounded-2xl border border-zinc-800 shadow-md space-y-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-[9px] font-bold text-netflixRed bg-netflixRed/10 border border-netflixRed/20 px-2 py-0.5 rounded-full uppercase">${spot.category}</span>
+                                <h5 class="text-xs font-bold text-white mt-1">${spot.name}</h5>
+                            </div>
+                            <button onclick="toggleSaveSpot(${spot.id})" class="text-rose-500 hover:text-rose-400 text-[10px] font-bold">Remove</button>
+                        </div>
+
+                        <div class="relative group">
+                            ${images.length > 1 ? `
+                                <button onclick="scrollCarousel('${carouselId}', -1)" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="scrollCarousel('${carouselId}', 1)" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                </button>
+                            ` : ''}
+
+                            <div id="${carouselId}" class="carousel-container flex gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-xl py-0.5">
+                                ${carouselHtml}
+                            </div>
+                        </div>
+
+                        <p class="text-[11px] text-zinc-300 leading-relaxed">${spot.description}</p>
+                        <button onclick="visitLocation(${spot.latitude}, ${spot.longitude}, '${spot.name}')" class="w-full py-1.5 bg-netflixRed text-white font-bold text-[10px] rounded-lg shadow flex items-center justify-center gap-1">
+                            <i data-lucide="navigation" class="w-3 h-3"></i>
+                            <span>Visit Location</span>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+
+            savedItems.forEach(spot => {
+                const el = document.getElementById(`carousel-saved-${spot.id}`);
+                if (el) makeDraggable(el);
+            });
+        }
+
+        async function handleDestinationSubmit(e) {
+            e.preventDefault();
+            if (isGuestMode || !currentUser) return;
+
+            const rawImg = document.getElementById('sub-images').value.trim();
+            const imagesArr = rawImg ? rawImg.split(',').map(s => s.trim()) : [];
+
+            const payload = {
+                submitted_by: currentUser.id,
+                name: document.getElementById('sub-name').value.trim(),
+                category: document.getElementById('sub-category').value,
+                location_address: document.getElementById('sub-address').value.trim(),
+                description: document.getElementById('sub-desc').value.trim(),
+                latitude: parseFloat(document.getElementById('sub-lat').value) || 11.0064,
+                longitude: parseFloat(document.getElementById('sub-lng').value) || 124.6075,
+                status: 'pending',
+                images: imagesArr
+            };
+
+            const { error } = await supabaseClient.from('destinations').insert([payload]);
+            if (!error) {
+                await logTrail(currentUser.id, currentUser.username, "SUBMIT_DESTINATION", `Proposed spot: ${payload.name}`);
+                showToast('success', 'Proposal submitted for Admin review.');
+                fetchMySubmissions();
+                switchTab('submit');
+            } else {
+                showToast('error', 'Submission failed.');
+            }
+        }
+
+        async function processApplication(destId, actionStatus) {
+            const { error } = await supabaseClient.from('destinations').update({ status: actionStatus }).eq('id', destId);
+            if (!error) {
+                await logTrail(currentUser.id, currentUser.username, "REVIEW_DESTINATION", `Set spot ID ${destId} to ${actionStatus.toUpperCase()}`);
+                showToast('success', `Proposal ${actionStatus.toUpperCase()}!`);
+                fetchPendingRequests();
+                fetchDestinations();
+            } else {
+                showToast('error', 'Failed to update proposal status.');
+            }
+        }
+
+        function renderPendingRequests(requests) {
+            const container = document.getElementById('pending-requests-list');
+            if (!requests || requests.length === 0) {
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">No pending proposals.</p>`;
+                return;
+            }
+
+            container.innerHTML = requests.map(r => `
+                <div class="bg-netflixCard p-3.5 rounded-2xl border border-zinc-800 shadow-md space-y-2">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded uppercase">Pending Review</span>
+                            <h5 class="text-xs font-bold text-white mt-1">${r.name}</h5>
+                            <p class="text-[10px] text-zinc-400">Staff: <b>${r.users ? r.users.username : 'LGU Staff'}</b></p>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-zinc-300 line-clamp-2">${r.description}</p>
+                    <div class="flex gap-2 pt-1">
+                        <button onclick="processApplication(${r.id}, 'approved')" class="flex-1 py-1.5 bg-netflixRed text-white font-bold text-[10px] rounded-lg shadow">Approve</button>
+                        <button onclick="processApplication(${r.id}, 'declined')" class="flex-1 py-1.5 bg-zinc-800 text-zinc-300 font-bold text-[10px] rounded-lg shadow">Decline</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderMySubmissions(submissions) {
+            const container = document.getElementById('my-submissions-list');
+            if (!submissions || submissions.length === 0) {
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-4">No content proposals submitted.</p>`;
+                return;
+            }
+
+            container.innerHTML = submissions.map(s => {
+                let badge = s.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : s.status === 'declined' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-400/10 text-amber-400 border border-amber-400/20';
+                return `
+                    <div class="bg-netflixCard p-3 rounded-xl border border-zinc-800 flex justify-between items-center text-xs">
+                        <div>
+                            <h6 class="font-bold text-white">${s.name}</h6>
+                            <span class="text-[9px] text-zinc-400">${s.category}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${badge}">${s.status}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('log-trail-list');
+            if (!logs || logs.length === 0) {
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">No audit trails logged.</p>`;
+                return;
+            }
+
+            container.innerHTML = logs.map(l => `
+                <div class="p-3 text-[11px]">
+                    <div class="flex justify-between font-bold text-zinc-200">
+                        <span>[${l.action}] by ${l.username_used}</span>
+                        <span class="text-[9px] text-zinc-500 font-normal">${new Date(l.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <p class="text-zinc-400 text-[10px] mt-0.5">${l.details || ''}</p>
+                </div>
+            `).join('');
+        }
+
+        function switchTab(tab) {
+            ['explore', 'saved', 'submit', 'approvals', 'logs', 'map', 'profile'].forEach(t => {
+                const el = document.getElementById(`panel-${t}`);
+                if (el) el.classList.add('hidden');
+            });
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-netflixRed', 'font-bold');
+                btn.classList.add('text-zinc-500');
+            });
+
+            const selectedPanel = document.getElementById(`panel-${tab}`);
+            const selectedBtn = document.getElementById(`nav-${tab}`);
+
+            if (selectedPanel) selectedPanel.classList.remove('hidden');
+            if (selectedBtn) {
+                selectedBtn.classList.remove('text-zinc-500');
+                selectedBtn.classList.add('text-netflixRed', 'font-bold');
+            }
+
+            if (tab === 'map') setTimeout(initMap, 200);
+            if (tab === 'submit') setTimeout(initPickerMap, 200);
+        }
+
+        function initMap() {
+            if (!leafletMap) {
+                leafletMap = L.map('map').setView([11.0064, 124.6075], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(leafletMap);
+            }
+            mapMarkers.forEach(m => leafletMap.removeLayer(m));
+            mapMarkers = [];
+
+            cachedDestinations.forEach(spot => {
+                if (spot.latitude && spot.longitude) {
+                    const marker = L.marker([spot.latitude, spot.longitude]).addTo(leafletMap).bindPopup(`<b>${spot.name}</b><br><span class="text-[10px]">${spot.location_address}</span>`);
+                    mapMarkers.push(marker);
+                }
+            });
+            leafletMap.invalidateSize();
+        }
+
+        function recenterMap() { if (leafletMap) leafletMap.setView([11.0064, 124.6075], 12); }
+        function openLogoutModal() { document.getElementById('logout-modal').classList.remove('hidden'); }
+        function closeLogoutModal() { document.getElementById('logout-modal').classList.add('hidden'); }
+
+        async function confirmLogout() {
+            closeLogoutModal();
+            if (currentUser) {
+                await logTrail(currentUser.id, currentUser.username, "USER_LOGOUT", "User signed out.");
+            }
+            currentUser = null;
+            isGuestMode = false;
+            localStorage.removeItem('exploreph_user');
+            localStorage.removeItem('exploreph_guest');
+            showAuthScreen();
+        }
+
+        function showToast(type, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let bg = type === 'success' ? 'bg-netflixRed' : type === 'error' ? 'bg-zinc-800 border border-rose-600' : 'bg-zinc-900 border border-zinc-700';
+
+            toast.className = `${bg} text-white px-3.5 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-bold mb-2 border border-zinc-800`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
