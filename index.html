@@ -44,13 +44,13 @@
 </head>
 <body class="bg-black text-netflixText font-sans antialiased flex items-center justify-center min-h-screen p-2 sm:p-4 select-none">
 
-    <!-- MOBILE PHONE FRAME -->
-    <div class="w-[390px] h-[844px] bg-netflixBlack rounded-[48px] p-3 shadow-2xl ring-1 ring-zinc-800 relative overflow-hidden flex flex-col shrink-0">
-        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-netflixBlack rounded-b-2xl z-50 flex items-center justify-center">
+    <!-- ADAPTIVE APP FRAME (MOBILE FRAME FOR TOURIST/STAFF/GUEST, EXPANDED DESKTOP WEB FOR ADMIN) -->
+    <div id="app-frame" class="w-[390px] h-[844px] bg-netflixBlack rounded-[48px] p-3 shadow-2xl ring-1 ring-zinc-800 relative overflow-hidden flex flex-col shrink-0 transition-all duration-500 ease-in-out">
+        <div id="phone-notch" class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-netflixBlack rounded-b-2xl z-50 flex items-center justify-center">
             <div class="w-12 h-1 bg-zinc-800 rounded-full"></div>
         </div>
 
-        <div class="w-full h-full bg-netflixBlack rounded-[36px] overflow-hidden flex flex-col relative pt-4 ring-1 ring-zinc-900">
+        <div id="frame-inner" class="w-full h-full bg-netflixBlack rounded-[36px] overflow-hidden flex flex-col relative pt-4 ring-1 ring-zinc-900 transition-all duration-300">
 
             <div id="toast-container" class="absolute top-8 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-xs pointer-events-none transition-all duration-300"></div>
 
@@ -63,10 +63,10 @@
                     <h1 class="text-2xl font-black tracking-tight text-netflixRed uppercase">
                         ExplorePH
                     </h1>
-                    <p class="text-[10px] text-zinc-400 tracking-wider uppercase font-semibold">Ormoc Mobile Tourism Navigation</p>
+                    <p class="text-[10px] text-zinc-400 tracking-wider uppercase font-semibold">Ormoc Tourism Access Portal</p>
                 </div>
 
-                <div class="bg-netflixCard border border-zinc-800 p-5 rounded-3xl shadow-2xl my-2 relative z-10 shrink-0">
+                <div class="bg-netflixCard border border-zinc-800 p-5 rounded-3xl shadow-2xl my-2 relative z-10 shrink-0 max-w-sm mx-auto w-full">
                     <div class="flex bg-zinc-900 p-1 rounded-xl mb-3 border border-zinc-800">
                         <button id="tab-login" type="button" onclick="switchAuthTab('login')" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-netflixRed text-white shadow">Sign In</button>
                         <button id="tab-register" type="button" onclick="switchAuthTab('register')" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-zinc-400 hover:text-white">Register</button>
@@ -153,7 +153,7 @@
                                 Tourism Staff
                             </button>
                             <button type="button" onclick="fillDemoCredentials('admin_demo')" class="py-1 px-1 bg-netflixRed/20 hover:bg-netflixRed/30 border border-netflixRed/40 rounded-lg text-[9px] text-netflixRed font-bold truncate">
-                                Admin
+                                Admin Web
                             </button>
                         </div>
 
@@ -172,186 +172,223 @@
 
             <!-- VIEW 2: MAIN DASHBOARD -->
             <div id="main-screen" class="flex-1 flex flex-col hidden bg-netflixBlack overflow-hidden">
-                <header class="bg-black/90 backdrop-blur px-4 py-2.5 border-b border-zinc-800 flex items-center justify-between sticky top-0 z-30 shadow-md shrink-0">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-netflixRed flex items-center justify-center text-white font-black text-xs shadow-md" id="user-avatar">U</div>
-                        <div>
-                            <h2 class="text-xs font-bold text-white leading-tight truncate max-w-[150px]" id="user-fullname">Welcome User</h2>
-                            <p class="text-[10px] text-zinc-400 flex items-center gap-1">
-                                <span class="w-1.5 h-1.5 rounded-full bg-netflixRed animate-pulse"></span>
-                                <span id="user-role-badge">USER</span>
-                            </p>
+                
+                <!-- DESKTOP ADMIN SIDEBAR NAVIGATION -->
+                <aside id="admin-desktop-sidebar" class="hidden flex-col w-64 bg-zinc-950 border-r border-zinc-800 p-4 shrink-0 justify-between">
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-3 px-2">
+                            <div class="w-10 h-10 rounded-2xl bg-netflixRed text-white flex items-center justify-center font-black shadow-lg shadow-netflixRed/30">
+                                <i data-lucide="shield-check" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-black text-white uppercase tracking-wider">Admin Portal</h2>
+                                <p class="text-[10px] text-zinc-400">Ormoc Tourism Console</p>
+                            </div>
                         </div>
+
+                        <div class="space-y-1" id="admin-sidebar-menu"></div>
                     </div>
 
-                    <button onclick="handleHeaderAction()" id="header-action-btn" class="p-1.5 text-zinc-400 hover:text-netflixRed hover:bg-zinc-900 rounded-xl transition">
-                        <i data-lucide="log-out" class="w-4 h-4"></i>
-                    </button>
-                </header>
-
-                <main class="flex-1 overflow-y-auto no-scrollbar relative pb-16">
-                    <!-- SEARCH & FILTER BAR -->
-                    <div class="p-3 bg-zinc-950/80 border-b border-zinc-800 sticky top-0 z-20 backdrop-blur flex gap-2">
-                        <div class="relative flex-1">
-                            <input type="text" id="search-input" onkeyup="filterDestinations()" placeholder="Search spot or address..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
-                            <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
-                        </div>
-                        <select id="category-filter" onchange="filterDestinations()" class="bg-zinc-900 border border-zinc-800 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed">
-                            <option value="ALL">All Types</option>
-                            <option value="Nature">Nature</option>
-                            <option value="Adventure">Adventure</option>
-                            <option value="Leisure">Leisure</option>
-                            <option value="Heritage">Heritage</option>
-                        </select>
-                    </div>
-
-                    <!-- TAB 1: EXPLORE HOME -->
-                    <section id="panel-explore" class="p-4 space-y-4">
-                        <div class="p-4 rounded-2xl bg-gradient-to-r from-netflixRed via-zinc-900 to-black text-white border border-zinc-800 shadow-xl">
-                            <h3 class="text-base font-black uppercase tracking-wider">Discover Ormoc</h3>
-                            <p class="text-[11px] text-zinc-300 mt-0.5">Explore tourist spots, view maps & travel details.</p>
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Destinations</h4>
-                                <span class="text-xs text-netflixRed font-bold" id="destination-count">0 Spots</span>
-                            </div>
-                            <div id="destinations-list" class="space-y-4"></div>
-                        </div>
-                    </section>
-
-                    <!-- TAB 2 (TOURIST): SAVED SPOT LIST -->
-                    <section id="panel-saved" class="p-4 space-y-4 hidden">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">My Saved Watchlist</h4>
-                            <span class="text-xs text-netflixRed font-bold" id="saved-count">0 Spots</span>
-                        </div>
-                        <div id="saved-destinations-list" class="space-y-4"></div>
-                    </section>
-
-                    <!-- TAB 3: CONTENT MANAGER (STAFF) WITH MAP PIN INDICATOR -->
-                    <section id="panel-submit" class="p-4 space-y-4 hidden">
-                        <div class="bg-netflixCard p-4 rounded-2xl border border-zinc-800 shadow-md">
-                            <div class="flex justify-between items-center mb-3">
-                                <h3 class="text-xs font-bold text-white uppercase tracking-wider">Add / Manage Destination</h3>
-                                <span class="bg-zinc-800 text-netflixRed text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">LGU Staff</span>
-                            </div>
-                            <form onsubmit="handleDestinationSubmit(event)" class="space-y-2.5">
-                                <div>
-                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Spot Name</label>
-                                    <input type="text" id="sub-name" required placeholder="e.g. Lake Danao" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Category</label>
-                                    <select id="sub-category" required class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed">
-                                        <option value="Nature">Nature</option>
-                                        <option value="Adventure">Adventure</option>
-                                        <option value="Leisure">Leisure</option>
-                                        <option value="Heritage">Heritage</option>
-                                    </select>
-                                </div>
-                                
-                                <!-- MAP PIN LOCATION SELECTOR -->
-                                <div>
-                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1 flex justify-between items-center">
-                                        <span>Pin Location on Map</span>
-                                        <span id="pin-coords-text" class="text-[9px] text-netflixRed font-mono font-bold">Click map to set pin</span>
-                                    </label>
-                                    <div class="w-full h-36 rounded-xl border border-zinc-800 overflow-hidden relative shadow-inner">
-                                        <div id="picker-map"></div>
-                                    </div>
-                                    <input type="hidden" id="sub-lat" value="11.0064" />
-                                    <input type="hidden" id="sub-lng" value="124.6075" />
-                                </div>
-
-                                <div>
-                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Location Address</label>
-                                    <input type="text" id="sub-address" required placeholder="Brgy. Cabintan, Ormoc City" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Description & Fee Schedule</label>
-                                    <textarea id="sub-desc" required rows="2" placeholder="Hours: 6am - 6pm. Fees: ₱50..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed"></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-medium text-zinc-400 mb-1">Image URLs (comma separated)</label>
-                                    <input type="text" id="sub-images" placeholder="https://domain.com/photo1.jpg, https://..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
-                                </div>
-                                <button type="submit" id="sub-btn" class="w-full py-2 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-xs rounded-xl shadow transition">Submit Tourism Content</button>
-                            </form>
-                        </div>
-
-                        <div>
-                            <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">My Content Submissions</h4>
-                            <div id="my-submissions-list" class="space-y-2"></div>
-                        </div>
-                    </section>
-
-                    <!-- TAB 4: ADMIN APPROVALS & MODERATION -->
-                    <section id="panel-approvals" class="p-4 space-y-3 hidden">
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Pending Destination Proposals</h3>
-                            <span class="bg-netflixRed/20 text-netflixRed text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Admin View</span>
-                        </div>
-                        <div id="pending-requests-list" class="space-y-3"></div>
-                    </section>
-
-                    <!-- TAB 5: ADMIN LOGS & ANALYTICS -->
-                    <section id="panel-logs" class="p-4 space-y-3 hidden">
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-netflixCard p-3 rounded-2xl border border-zinc-800 text-center">
-                                <span class="text-xs text-zinc-400 font-medium">Total Spots</span>
-                                <h4 class="text-lg font-black text-netflixRed mt-0.5" id="stat-total-spots">0</h4>
-                            </div>
-                            <div class="bg-netflixCard p-3 rounded-2xl border border-zinc-800 text-center">
-                                <span class="text-xs text-zinc-400 font-medium">Approved Content</span>
-                                <h4 class="text-lg font-black text-emerald-400 mt-0.5" id="stat-approved-spots">0</h4>
+                    <div class="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-netflixRed text-white flex items-center justify-center font-bold text-xs" id="admin-avatar-desktop">A</div>
+                            <div class="overflow-hidden">
+                                <h4 class="text-xs font-bold text-white truncate" id="admin-fullname-desktop">System Admin</h4>
+                                <span class="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active Web
+                                </span>
                             </div>
                         </div>
-
-                        <div class="flex justify-between items-center pt-2">
-                            <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">System Audit Trail</h3>
-                            <span class="bg-zinc-800 text-zinc-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Security Logs</span>
-                        </div>
-                        <div class="bg-netflixCard rounded-2xl border border-zinc-800 shadow-sm overflow-hidden">
-                            <div class="max-h-[350px] overflow-y-auto divide-y divide-zinc-800/60" id="log-trail-list"></div>
-                        </div>
-                    </section>
-
-                    <!-- TAB 6: MAP -->
-                    <section id="panel-map" class="h-full flex flex-col hidden relative">
-                        <div class="p-2.5 bg-black/80 border-b border-zinc-800 flex items-center justify-between z-10">
-                            <span class="text-xs font-bold text-zinc-200 flex items-center gap-1">
-                                <i data-lucide="navigation" class="w-3.5 h-3.5 text-netflixRed"></i> Ormoc GPS Route
-                            </span>
-                            <button onclick="recenterMap()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-semibold rounded-lg">Center</button>
-                        </div>
-                        <div class="flex-1 relative">
-                            <div id="map" class="w-full h-full min-h-[400px]"></div>
-                        </div>
-                    </section>
-
-                    <!-- TAB 7: PROFILE -->
-                    <section id="panel-profile" class="p-4 space-y-4 hidden">
-                        <div class="bg-netflixCard p-5 rounded-2xl border border-zinc-800 text-center shadow-md">
-                            <div class="w-16 h-16 bg-netflixRed rounded-full mx-auto flex items-center justify-center text-white text-xl font-black mb-2 shadow-lg">
-                                <span id="profile-avatar-large">U</span>
-                            </div>
-                            <h3 class="text-sm font-bold text-white" id="profile-name">User Full Name</h3>
-                            <p class="text-xs text-zinc-400" id="profile-email">user@example.com</p>
-                            <span class="inline-block mt-2 px-3 py-0.5 bg-zinc-900 border border-zinc-800 text-netflixRed rounded-full text-[9px] font-bold uppercase" id="profile-role">User</span>
-                        </div>
-                        <button onclick="openLogoutModal()" class="w-full py-2.5 bg-zinc-900 border border-zinc-800 hover:border-netflixRed text-netflixRed font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
-                            <i data-lucide="log-out" class="w-4 h-4"></i>
-                            <span>Sign Out Account</span>
+                        <button onclick="openLogoutModal()" class="w-full py-1.5 bg-zinc-800 hover:bg-rose-900/40 border border-zinc-700 hover:border-netflixRed text-zinc-300 hover:text-netflixRed rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                            <span>Sign Out</span>
                         </button>
-                    </section>
-                </main>
+                    </div>
+                </aside>
 
-                <!-- DYNAMIC BOTTOM NAVIGATION BAR -->
-                <nav class="bg-black border-t border-zinc-800 absolute bottom-0 left-0 right-0 z-30 pb-safe shrink-0">
-                    <div class="flex justify-around items-center h-14 px-2" id="nav-container"></div>
-                </nav>
+                <!-- MAIN DASHBOARD CONTENT AREA -->
+                <div class="flex-1 flex flex-col overflow-hidden relative">
+                    <header id="mobile-header" class="bg-black/90 backdrop-blur px-4 py-2.5 border-b border-zinc-800 flex items-center justify-between sticky top-0 z-30 shadow-md shrink-0">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-full bg-netflixRed flex items-center justify-center text-white font-black text-xs shadow-md" id="user-avatar">U</div>
+                            <div>
+                                <h2 class="text-xs font-bold text-white leading-tight truncate max-w-[150px]" id="user-fullname">Welcome User</h2>
+                                <p class="text-[10px] text-zinc-400 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-netflixRed animate-pulse"></span>
+                                    <span id="user-role-badge">USER</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <button onclick="handleHeaderAction()" id="header-action-btn" class="p-1.5 text-zinc-400 hover:text-netflixRed hover:bg-zinc-900 rounded-xl transition">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                        </button>
+                    </header>
+
+                    <main class="flex-1 overflow-y-auto no-scrollbar relative pb-16 p-3">
+                        <!-- SEARCH & FILTER BAR -->
+                        <div id="search-bar-wrapper" class="p-3 mb-3 bg-zinc-950/80 border border-zinc-800 rounded-2xl sticky top-0 z-20 backdrop-blur flex gap-2">
+                            <div class="relative flex-1">
+                                <input type="text" id="search-input" onkeyup="filterDestinations()" placeholder="Search spot or address..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                <i data-lucide="search" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+                            </div>
+                            <select id="category-filter" onchange="filterDestinations()" class="bg-zinc-900 border border-zinc-800 rounded-xl px-2 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed">
+                                <option value="ALL">All Types</option>
+                                <option value="Nature">Nature</option>
+                                <option value="Adventure">Adventure</option>
+                                <option value="Leisure">Leisure</option>
+                                <option value="Heritage">Heritage</option>
+                            </select>
+                        </div>
+
+                        <!-- TAB 1: EXPLORE HOME -->
+                        <section id="panel-explore" class="space-y-4">
+                            <div class="p-4 rounded-2xl bg-gradient-to-r from-netflixRed via-zinc-900 to-black text-white border border-zinc-800 shadow-xl">
+                                <h3 class="text-base font-black uppercase tracking-wider">Discover Ormoc</h3>
+                                <p class="text-[11px] text-zinc-300 mt-0.5">Explore tourist spots, view interactive maps & travel details.</p>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Destinations</h4>
+                                    <span class="text-xs text-netflixRed font-bold" id="destination-count">0 Spots</span>
+                                </div>
+                                <div id="destinations-list" class="space-y-4"></div>
+                            </div>
+                        </section>
+
+                        <!-- TAB 2 (TOURIST): SAVED SPOT LIST -->
+                        <section id="panel-saved" class="space-y-4 hidden">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider">My Saved Watchlist</h4>
+                                <span class="text-xs text-netflixRed font-bold" id="saved-count">0 Spots</span>
+                            </div>
+                            <div id="saved-destinations-list" class="space-y-4"></div>
+                        </section>
+
+                        <!-- TAB 3: CONTENT MANAGER (STAFF) WITH MAP PIN INDICATOR -->
+                        <section id="panel-submit" class="space-y-4 hidden">
+                            <div class="bg-netflixCard p-4 rounded-2xl border border-zinc-800 shadow-md">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-xs font-bold text-white uppercase tracking-wider">Add / Manage Destination</h3>
+                                    <span class="bg-zinc-800 text-netflixRed text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">LGU Staff</span>
+                                </div>
+                                <form onsubmit="handleDestinationSubmit(event)" class="space-y-2.5">
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">Spot Name</label>
+                                        <input type="text" id="sub-name" required placeholder="e.g. Lake Danao" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">Category</label>
+                                        <select id="sub-category" required class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed">
+                                            <option value="Nature">Nature</option>
+                                            <option value="Adventure">Adventure</option>
+                                            <option value="Leisure">Leisure</option>
+                                            <option value="Heritage">Heritage</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- MAP PIN LOCATION SELECTOR -->
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-zinc-400 mb-1 flex justify-between items-center">
+                                            <span>Pin Location on Map</span>
+                                            <span id="pin-coords-text" class="text-[9px] text-netflixRed font-mono font-bold">Click map to set pin</span>
+                                        </label>
+                                        <div class="w-full h-36 rounded-xl border border-zinc-800 overflow-hidden relative shadow-inner">
+                                            <div id="picker-map"></div>
+                                        </div>
+                                        <input type="hidden" id="sub-lat" value="11.0064" />
+                                        <input type="hidden" id="sub-lng" value="124.6075" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">Location Address</label>
+                                        <input type="text" id="sub-address" required placeholder="Brgy. Cabintan, Ormoc City" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">Description & Fee Schedule</label>
+                                        <textarea id="sub-desc" required rows="2" placeholder="Hours: 6am - 6pm. Fees: ₱50..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-medium text-zinc-400 mb-1">Image URLs (comma separated)</label>
+                                        <input type="text" id="sub-images" placeholder="https://domain.com/photo1.jpg, https://..." class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                    </div>
+                                    <button type="submit" id="sub-btn" class="w-full py-2 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-xs rounded-xl shadow transition">Submit Tourism Content</button>
+                                </form>
+                            </div>
+
+                            <div>
+                                <h4 class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">My Content Submissions</h4>
+                                <div id="my-submissions-list" class="space-y-2"></div>
+                            </div>
+                        </section>
+
+                        <!-- TAB 4: ADMIN APPROVALS & MODERATION -->
+                        <section id="panel-approvals" class="space-y-3 hidden">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Pending Destination Proposals</h3>
+                                <span class="bg-netflixRed/20 text-netflixRed text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Admin View</span>
+                            </div>
+                            <div id="pending-requests-list" class="space-y-3"></div>
+                        </section>
+
+                        <!-- TAB 5: ADMIN LOGS & ANALYTICS -->
+                        <section id="panel-logs" class="space-y-4 hidden">
+                            <div class="grid grid-cols-2 gap-3" id="admin-stats-grid">
+                                <div class="bg-netflixCard p-4 rounded-2xl border border-zinc-800 text-center shadow-md">
+                                    <span class="text-xs text-zinc-400 font-medium">Total Spots</span>
+                                    <h4 class="text-2xl font-black text-netflixRed mt-0.5" id="stat-total-spots">0</h4>
+                                </div>
+                                <div class="bg-netflixCard p-4 rounded-2xl border border-zinc-800 text-center shadow-md">
+                                    <span class="text-xs text-zinc-400 font-medium">Approved Content</span>
+                                    <h4 class="text-2xl font-black text-emerald-400 mt-0.5" id="stat-approved-spots">0</h4>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-center pt-2">
+                                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">System Audit Trail</h3>
+                                <span class="bg-zinc-800 text-zinc-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Security Logs</span>
+                            </div>
+                            <div class="bg-netflixCard rounded-2xl border border-zinc-800 shadow-sm overflow-hidden">
+                                <div class="max-h-[450px] overflow-y-auto divide-y divide-zinc-800/60" id="log-trail-list"></div>
+                            </div>
+                        </section>
+
+                        <!-- TAB 6: MAP -->
+                        <section id="panel-map" class="h-full flex flex-col hidden relative min-h-[400px] rounded-2xl overflow-hidden border border-zinc-800">
+                            <div class="p-2.5 bg-black/80 border-b border-zinc-800 flex items-center justify-between z-10">
+                                <span class="text-xs font-bold text-zinc-200 flex items-center gap-1">
+                                    <i data-lucide="navigation" class="w-3.5 h-3.5 text-netflixRed"></i> Ormoc GPS Navigation Route
+                                </span>
+                                <button onclick="recenterMap()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-semibold rounded-lg">Center</button>
+                            </div>
+                            <div class="flex-1 relative">
+                                <div id="map" class="w-full h-full min-h-[380px]"></div>
+                            </div>
+                        </section>
+
+                        <!-- TAB 7: PROFILE -->
+                        <section id="panel-profile" class="space-y-4 hidden max-w-md mx-auto">
+                            <div class="bg-netflixCard p-5 rounded-2xl border border-zinc-800 text-center shadow-md">
+                                <div class="w-16 h-16 bg-netflixRed rounded-full mx-auto flex items-center justify-center text-white text-xl font-black mb-2 shadow-lg">
+                                    <span id="profile-avatar-large">U</span>
+                                </div>
+                                <h3 class="text-sm font-bold text-white" id="profile-name">User Full Name</h3>
+                                <p class="text-xs text-zinc-400" id="profile-email">user@example.com</p>
+                                <span class="inline-block mt-2 px-3 py-0.5 bg-zinc-900 border border-zinc-800 text-netflixRed rounded-full text-[9px] font-bold uppercase" id="profile-role">User</span>
+                            </div>
+                            <button onclick="openLogoutModal()" class="w-full py-2.5 bg-zinc-900 border border-zinc-800 hover:border-netflixRed text-netflixRed font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                <span>Sign Out Account</span>
+                            </button>
+                        </section>
+                    </main>
+
+                    <!-- DYNAMIC MOBILE BOTTOM NAVIGATION BAR -->
+                    <nav id="mobile-bottom-nav" class="bg-black border-t border-zinc-800 absolute bottom-0 left-0 right-0 z-30 pb-safe shrink-0">
+                        <div class="flex justify-around items-center h-14 px-2" id="nav-container"></div>
+                    </nav>
+                </div>
 
                 <!-- REVIEWS & RATINGS MODAL -->
                 <div id="reviews-modal" class="absolute inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col p-4 hidden">
@@ -369,7 +406,7 @@
 
                     <!-- ADD REVIEW FORM -->
                     <div id="add-review-box" class="pt-3 border-t border-zinc-800 shrink-0">
-                        <form onsubmit="handleReviewSubmit(event)" class="space-y-2">
+                        <form onsubmit="handleReviewSubmit(event)" class="space-y-2 max-w-sm mx-auto">
                             <div class="flex justify-between items-center">
                                 <span class="text-[11px] font-bold text-zinc-300">Leave Feedback</span>
                                 <select id="review-rating-input" class="bg-zinc-900 border border-zinc-800 text-xs text-amber-400 font-bold px-2 py-1 rounded-lg">
@@ -404,46 +441,48 @@
             </div>
 
             <!-- OTP ACCOUNT RECOVERY MODAL (GLOBAL OVERLAY) -->
-            <div id="otp-modal" class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col p-5 hidden">
-                <div class="flex justify-between items-center border-b border-zinc-800 pb-2 mb-3 pt-4">
-                    <h4 class="text-xs font-bold text-white uppercase">OTP Account Recovery</h4>
-                    <button type="button" onclick="closeOtpModal()" class="p-1.5 bg-zinc-800 text-white rounded-full">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                </div>
-
-                <div class="space-y-3 my-auto">
-                    <!-- STEP 1: REQUEST OTP -->
-                    <div id="otp-step-1" class="space-y-2">
-                        <p class="text-[11px] text-zinc-400 leading-relaxed">Enter your registered username to generate a security OTP code.</p>
-                        <input type="text" id="otp-username" placeholder="Username" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-netflixRed" />
-                        <button type="button" onclick="requestOtpCode()" class="w-full py-2 bg-netflixRed text-white font-bold text-xs rounded-xl shadow">Request OTP Code</button>
+            <div id="otp-modal" class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex flex-col p-5 hidden items-center justify-center">
+                <div class="max-w-xs w-full">
+                    <div class="flex justify-between items-center border-b border-zinc-800 pb-2 mb-3">
+                        <h4 class="text-xs font-bold text-white uppercase">OTP Account Recovery</h4>
+                        <button type="button" onclick="closeOtpModal()" class="p-1.5 bg-zinc-800 text-white rounded-full">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
                     </div>
 
-                    <!-- STEP 2: DISPLAY OTP AND RESET PASSWORD -->
-                    <div id="otp-step-2" class="space-y-2.5 hidden">
-                        <div class="p-3 bg-zinc-900 border border-netflixRed/40 rounded-2xl text-center space-y-1">
-                            <span class="text-[10px] text-zinc-400 font-semibold uppercase">Generated OTP Code</span>
-                            <div class="flex items-center justify-center gap-2">
-                                <span id="generated-otp-display" class="text-xl font-black text-netflixRed tracking-widest">######</span>
-                                <button type="button" onclick="copyOtpToClipboard()" class="p-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-white" title="Copy OTP">
-                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-                                </button>
+                    <div class="space-y-3">
+                        <!-- STEP 1: REQUEST OTP -->
+                        <div id="otp-step-1" class="space-y-2">
+                            <p class="text-[11px] text-zinc-400 leading-relaxed">Enter your registered username to generate a security OTP code.</p>
+                            <input type="text" id="otp-username" placeholder="Username" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                            <button type="button" onclick="requestOtpCode()" class="w-full py-2 bg-netflixRed text-white font-bold text-xs rounded-xl shadow">Request OTP Code</button>
+                        </div>
+
+                        <!-- STEP 2: DISPLAY OTP AND RESET PASSWORD -->
+                        <div id="otp-step-2" class="space-y-2.5 hidden">
+                            <div class="p-3 bg-zinc-900 border border-netflixRed/40 rounded-2xl text-center space-y-1">
+                                <span class="text-[10px] text-zinc-400 font-semibold uppercase">Generated OTP Code</span>
+                                <div class="flex items-center justify-center gap-2">
+                                    <span id="generated-otp-display" class="text-xl font-black text-netflixRed tracking-widest">######</span>
+                                    <button type="button" onclick="copyOtpToClipboard()" class="p-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-xs text-white" title="Copy OTP">
+                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                                <p class="text-[9px] text-zinc-500">Recorded in database table `users.otp_code`</p>
                             </div>
-                            <p class="text-[9px] text-zinc-500">Recorded in database table `users.otp_code`</p>
-                        </div>
 
-                        <div>
-                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Enter Received OTP</label>
-                            <input type="text" id="otp-input-code" placeholder="6-digit code" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
-                        </div>
+                            <div>
+                                <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">Enter Received OTP</label>
+                                <input type="text" id="otp-input-code" placeholder="6-digit code" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                            </div>
 
-                        <div>
-                            <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">New Password</label>
-                            <input type="password" id="otp-new-password" placeholder="Complex new password" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
-                        </div>
+                            <div>
+                                <label class="block text-[10px] font-medium text-zinc-300 mb-0.5">New Password</label>
+                                <input type="password" id="otp-new-password" placeholder="Complex new password" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                            </div>
 
-                        <button type="button" onclick="verifyOtpAndReset()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow">Reset Password & Unlock</button>
+                            <button type="button" onclick="verifyOtpAndReset()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow">Reset Password & Unlock</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -456,7 +495,13 @@
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5bGdtenR2bWRteXBsYXFpbXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2ODAwMzMsImV4cCI6MjEwNzI1NjAzM30.ZU_w39v1Ay7YSrr4MKgxAIZv1CoyBn0rQppNqlq8ung";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let currentUser = JSON.parse(localStorage.getItem('exploreph_user')) || null;
+        let currentUser = null;
+        try {
+            currentUser = JSON.parse(localStorage.getItem('exploreph_user'));
+        } catch (err) {
+            currentUser = null;
+        }
+
         let isGuestMode = localStorage.getItem('exploreph_guest') === 'true';
         let cachedDestinations = [];
         let savedSpotIds = JSON.parse(localStorage.getItem('exploreph_saved_ids')) || [];
@@ -470,9 +515,83 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            if (currentUser || isGuestMode) showMainDashboard();
-            else showAuthScreen();
+            if (currentUser || isGuestMode) {
+                showMainDashboard();
+            } else {
+                showAuthScreen();
+            }
         });
+
+        function setAppLayout(role) {
+            const frame = document.getElementById('app-frame');
+            const inner = document.getElementById('frame-inner');
+            const notch = document.getElementById('phone-notch');
+            const mobileHeader = document.getElementById('mobile-header');
+            const mobileNav = document.getElementById('mobile-bottom-nav');
+            const adminSidebar = document.getElementById('admin-desktop-sidebar');
+            const mainScreen = document.getElementById('main-screen');
+            const destList = document.getElementById('destinations-list');
+            const savedList = document.getElementById('saved-destinations-list');
+            const pendingList = document.getElementById('pending-requests-list');
+
+            if (role === 'admin') {
+                // DESKTOP WEBSITE LAYOUT FOR ADMIN ROLE
+                frame.className = "w-full max-w-7xl h-[92vh] min-h-[680px] bg-netflixBlack rounded-3xl p-2 md:p-4 shadow-2xl ring-1 ring-zinc-800 relative overflow-hidden flex flex-col transition-all duration-500 ease-in-out";
+                inner.className = "w-full h-full bg-netflixBlack rounded-2xl overflow-hidden flex flex-col relative pt-0 ring-1 ring-zinc-900";
+                
+                mainScreen.classList.remove('flex-col');
+                mainScreen.classList.add('flex-row');
+                
+                notch.style.display = 'none';
+                mobileHeader.style.display = 'none';
+                mobileNav.style.display = 'none';
+                adminSidebar.style.display = 'flex';
+                adminSidebar.classList.remove('hidden');
+
+                if (destList) destList.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
+                if (savedList) savedList.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+                if (pendingList) pendingList.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3";
+
+                renderAdminSidebar();
+            } else {
+                // MOBILE PHONE MOCKUP LAYOUT FOR TOURIST, STAFF, AND GUEST ROLES
+                frame.className = "w-[390px] h-[844px] bg-netflixBlack rounded-[48px] p-3 shadow-2xl ring-1 ring-zinc-800 relative overflow-hidden flex flex-col shrink-0 transition-all duration-500 ease-in-out";
+                inner.className = "w-full h-full bg-netflixBlack rounded-[36px] overflow-hidden flex flex-col relative pt-4 ring-1 ring-zinc-900";
+                
+                mainScreen.classList.remove('flex-row');
+                mainScreen.classList.add('flex-col');
+                
+                notch.style.display = 'flex';
+                mobileHeader.style.display = 'flex';
+                mobileNav.style.display = 'block';
+                adminSidebar.style.display = 'none';
+                adminSidebar.classList.add('hidden');
+
+                if (destList) destList.className = "space-y-4";
+                if (savedList) savedList.className = "space-y-4";
+                if (pendingList) pendingList.className = "space-y-3";
+            }
+        }
+
+        function renderAdminSidebar() {
+            const menu = document.getElementById('admin-sidebar-menu');
+            const navItems = [
+                { id: 'explore', icon: 'compass', label: 'Explore Destinations' },
+                { id: 'approvals', icon: 'check-square', label: 'Content Approvals' },
+                { id: 'logs', icon: 'shield-check', label: 'Security & Audit Logs' },
+                { id: 'map', icon: 'map', label: 'Ormoc Interactive Map' },
+                { id: 'profile', icon: 'user', label: 'Admin Account' }
+            ];
+
+            menu.innerHTML = navItems.map(item => `
+                <button onclick="switchTab('${item.id}')" id="admin-nav-${item.id}" class="admin-nav-btn w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition text-zinc-400 hover:text-white hover:bg-zinc-900">
+                    <i data-lucide="${item.icon}" class="w-4 h-4"></i>
+                    <span>${item.label}</span>
+                </button>
+            `).join('');
+
+            lucide.createIcons();
+        }
 
         function togglePasswordVisibility(inputId, iconId) {
             const input = document.getElementById(inputId);
@@ -552,8 +671,8 @@
                     const lockSeconds = 60 * (failed - 2);
                     lockout_until = new Date(Date.now() + lockSeconds * 1000).toISOString();
                     await supabaseClient.from('users').update({ failed_attempts: failed, lockout_until }).eq('id', user.id);
-                    await logTrail(user.id, username, "ACCOUNT_LOCKOUT", `Locked for ${lockSecs}s after ${failed} failed attempts.`);
-                    showToast('error', `3 failed attempts! Account locked for ${lockSecs} seconds.`);
+                    await logTrail(user.id, username, "ACCOUNT_LOCKOUT", `Locked for ${lockSeconds}s after ${failed} failed attempts.`);
+                    showToast('error', `3 failed attempts! Account locked for ${lockSeconds} seconds.`);
                 } else {
                     await supabaseClient.from('users').update({ failed_attempts: failed }).eq('id', user.id);
                     await logTrail(user.id, username, "FAILED_LOGIN", `Incorrect password. Attempt ${failed}/3.`);
@@ -678,6 +797,7 @@
         }
 
         function showAuthScreen() {
+            setAppLayout('user');
             document.getElementById('auth-screen').classList.remove('hidden');
             document.getElementById('main-screen').classList.add('hidden');
         }
@@ -734,16 +854,28 @@
         }
 
         async function showMainDashboard() {
+            const role = isGuestMode ? 'guest' : (currentUser && currentUser.role ? currentUser.role.toLowerCase() : 'user');
+
+            setAppLayout(role);
+
             document.getElementById('auth-screen').classList.add('hidden');
             document.getElementById('main-screen').classList.remove('hidden');
 
-            const role = isGuestMode ? 'GUEST' : (currentUser.role || 'user').toLowerCase();
-
-            document.getElementById('user-fullname').innerText = isGuestMode ? 'Guest Traveler' : (currentUser.full_name || currentUser.username);
-            document.getElementById('profile-name').innerText = isGuestMode ? 'Guest Traveler' : (currentUser.full_name || currentUser.username);
-            document.getElementById('profile-email').innerText = isGuestMode ? 'unauthenticated' : currentUser.email;
+            const nameToDisplay = isGuestMode ? 'Guest Traveler' : (currentUser ? (currentUser.full_name || currentUser.username) : 'Guest Traveler');
+            document.getElementById('user-fullname').innerText = nameToDisplay;
+            document.getElementById('profile-name').innerText = nameToDisplay;
+            document.getElementById('profile-email').innerText = isGuestMode ? 'unauthenticated' : (currentUser ? currentUser.email : '');
             document.getElementById('user-role-badge').innerText = role.toUpperCase();
             document.getElementById('profile-role').innerText = role.toUpperCase();
+
+            const firstLetter = nameToDisplay.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').innerText = firstLetter;
+            document.getElementById('profile-avatar-large').innerText = firstLetter;
+
+            if (role === 'admin') {
+                document.getElementById('admin-fullname-desktop').innerText = nameToDisplay;
+                document.getElementById('admin-avatar-desktop').innerText = firstLetter;
+            }
 
             const headerBtn = document.getElementById('header-action-btn');
             headerBtn.innerHTML = isGuestMode ? `<i data-lucide="log-in" class="w-4 h-4"></i>` : `<i data-lucide="log-out" class="w-4 h-4"></i>`;
@@ -850,7 +982,6 @@
             });
         }
 
-        // INITIALIZE MINI PICKER MAP FOR STAFF
         function initPickerMap() {
             if (!pickerMap) {
                 pickerMap = L.map('picker-map').setView([11.0064, 124.6075], 12);
@@ -867,7 +998,6 @@
                     if (pickerMarker) pickerMap.removeLayer(pickerMarker);
                     pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
 
-                    // Reverse geocode address automatically
                     fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`)
                         .then(res => res.json())
                         .then(data => {
@@ -955,9 +1085,11 @@
             document.getElementById('destination-count').innerText = `${items.length} Spots`;
 
             if (items.length === 0) {
-                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">No destinations match filter.</p>`;
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6 col-span-full">No destinations match filter.</p>`;
                 return;
             }
+
+            const fallbackImg = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&q=80";
 
             container.innerHTML = items.map((spot) => {
                 const isSaved = savedSpotIds.includes(spot.id);
@@ -967,42 +1099,44 @@
                 const carouselHtml = images.length > 0 
                     ? images.map(img => `
                         <div class="snap-center shrink-0 w-full h-44 bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-800">
-                            <img src="${img}" alt="${spot.name}" class="w-full h-full object-cover pointer-events-none" />
+                            <img src="${img}" alt="${spot.name}" onerror="this.onerror=null;this.src='${fallbackImg}';" class="w-full h-full object-cover pointer-events-none" />
                         </div>
                     `).join('')
                     : `<div class="snap-center shrink-0 w-full h-44 bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-600 text-xs">No image provided</div>`;
 
                 return `
-                    <div class="bg-netflixCard rounded-2xl border border-zinc-800 shadow-lg p-3.5 space-y-2.5">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-[9px] font-bold text-netflixRed bg-netflixRed/10 border border-netflixRed/20 px-2 py-0.5 rounded-full uppercase">${spot.category}</span>
-                                <h5 class="text-xs font-bold text-white mt-1">${spot.name}</h5>
-                                <p class="text-[10px] text-zinc-400">${spot.location_address}</p>
+                    <div class="bg-netflixCard rounded-2xl border border-zinc-800 shadow-lg p-3.5 space-y-2.5 flex flex-col justify-between">
+                        <div class="space-y-2.5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[9px] font-bold text-netflixRed bg-netflixRed/10 border border-netflixRed/20 px-2 py-0.5 rounded-full uppercase">${spot.category}</span>
+                                    <h5 class="text-xs font-bold text-white mt-1">${spot.name}</h5>
+                                    <p class="text-[10px] text-zinc-400">${spot.location_address}</p>
+                                </div>
+                                <button onclick="toggleSaveSpot(${spot.id})" class="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 ${isSaved ? 'text-netflixRed' : 'text-zinc-500 hover:text-zinc-300'}">
+                                    <i data-lucide="bookmark" class="w-4 h-4 ${isSaved ? 'fill-netflixRed' : ''}"></i>
+                                </button>
                             </div>
-                            <button onclick="toggleSaveSpot(${spot.id})" class="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 ${isSaved ? 'text-netflixRed' : 'text-zinc-500 hover:text-zinc-300'}">
-                                <i data-lucide="bookmark" class="w-4 h-4 ${isSaved ? 'fill-netflixRed' : ''}"></i>
-                            </button>
+
+                            <div class="relative group">
+                                ${images.length > 1 ? `
+                                    <button onclick="scrollCarousel('${carouselId}', -1)" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                                    </button>
+                                    <button onclick="scrollCarousel('${carouselId}', 1)" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                    </button>
+                                ` : ''}
+
+                                <div id="${carouselId}" class="carousel-container flex gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-xl py-0.5">
+                                    ${carouselHtml}
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-zinc-300 leading-relaxed">${spot.description}</p>
                         </div>
 
-                        <div class="relative group">
-                            ${images.length > 1 ? `
-                                <button onclick="scrollCarousel('${carouselId}', -1)" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
-                                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                                </button>
-                                <button onclick="scrollCarousel('${carouselId}', 1)" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
-                                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                                </button>
-                            ` : ''}
-
-                            <div id="${carouselId}" class="carousel-container flex gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-xl py-0.5">
-                                ${carouselHtml}
-                            </div>
-                        </div>
-
-                        <p class="text-[11px] text-zinc-300 leading-relaxed">${spot.description}</p>
-
-                        <div class="flex items-center justify-between pt-2 border-t border-zinc-800/80">
+                        <div class="flex items-center justify-between pt-2 border-t border-zinc-800/80 mt-2">
                             <button onclick="openReviewsModal(${spot.id}, '${spot.name}')" class="text-amber-400 text-[10px] font-bold flex items-center gap-1 hover:underline">
                                 <span>★ ${spot.rating || '4.8'} Reviews</span>
                             </button>
@@ -1030,7 +1164,7 @@
 
             if (savedItems.length === 0) {
                 container.innerHTML = `
-                    <div class="bg-netflixCard p-6 rounded-2xl border border-zinc-800 text-center shadow-md">
+                    <div class="bg-netflixCard p-6 rounded-2xl border border-zinc-800 text-center shadow-md col-span-full">
                         <div class="w-12 h-12 bg-netflixRed/10 rounded-full flex items-center justify-center mx-auto mb-2 text-netflixRed">
                             <i data-lucide="bookmark-check" class="w-6 h-6"></i>
                         </div>
@@ -1042,6 +1176,8 @@
                 return;
             }
 
+            const fallbackImg = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&q=80";
+
             container.innerHTML = savedItems.map(spot => {
                 const images = spot.images ? (typeof spot.images === 'string' ? JSON.parse(spot.images) : spot.images) : [];
                 const carouselId = `carousel-saved-${spot.id}`;
@@ -1049,38 +1185,40 @@
                 const carouselHtml = images.length > 0 
                     ? images.map(img => `
                         <div class="snap-center shrink-0 w-full h-36 bg-zinc-900 rounded-xl overflow-hidden relative border border-zinc-800">
-                            <img src="${img}" alt="${spot.name}" class="w-full h-full object-cover pointer-events-none" />
+                            <img src="${img}" alt="${spot.name}" onerror="this.onerror=null;this.src='${fallbackImg}';" class="w-full h-full object-cover pointer-events-none" />
                         </div>
                     `).join('')
                     : `<div class="snap-center shrink-0 w-full h-36 bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-600 text-xs">No image provided</div>`;
 
                 return `
-                    <div class="bg-netflixCard p-3.5 rounded-2xl border border-zinc-800 shadow-md space-y-2">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-[9px] font-bold text-netflixRed bg-netflixRed/10 border border-netflixRed/20 px-2 py-0.5 rounded-full uppercase">${spot.category}</span>
-                                <h5 class="text-xs font-bold text-white mt-1">${spot.name}</h5>
+                    <div class="bg-netflixCard p-3.5 rounded-2xl border border-zinc-800 shadow-md space-y-2 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[9px] font-bold text-netflixRed bg-netflixRed/10 border border-netflixRed/20 px-2 py-0.5 rounded-full uppercase">${spot.category}</span>
+                                    <h5 class="text-xs font-bold text-white mt-1">${spot.name}</h5>
+                                </div>
+                                <button onclick="toggleSaveSpot(${spot.id})" class="text-rose-500 hover:text-rose-400 text-[10px] font-bold">Remove</button>
                             </div>
-                            <button onclick="toggleSaveSpot(${spot.id})" class="text-rose-500 hover:text-rose-400 text-[10px] font-bold">Remove</button>
-                        </div>
 
-                        <div class="relative group">
-                            ${images.length > 1 ? `
-                                <button onclick="scrollCarousel('${carouselId}', -1)" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
-                                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                                </button>
-                                <button onclick="scrollCarousel('${carouselId}', 1)" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
-                                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                                </button>
-                            ` : ''}
+                            <div class="relative group">
+                                ${images.length > 1 ? `
+                                    <button onclick="scrollCarousel('${carouselId}', -1)" class="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                                    </button>
+                                    <button onclick="scrollCarousel('${carouselId}', 1)" class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-black/70 hover:bg-black text-white rounded-full flex items-center justify-center border border-zinc-700 shadow-lg">
+                                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                    </button>
+                                ` : ''}
 
-                            <div id="${carouselId}" class="carousel-container flex gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-xl py-0.5">
-                                ${carouselHtml}
+                                <div id="${carouselId}" class="carousel-container flex gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-xl py-0.5">
+                                    ${carouselHtml}
+                                </div>
                             </div>
-                        </div>
 
-                        <p class="text-[11px] text-zinc-300 leading-relaxed">${spot.description}</p>
-                        <button onclick="visitLocation(${spot.latitude}, ${spot.longitude}, '${spot.name}')" class="w-full py-1.5 bg-netflixRed text-white font-bold text-[10px] rounded-lg shadow flex items-center justify-center gap-1">
+                            <p class="text-[11px] text-zinc-300 leading-relaxed">${spot.description}</p>
+                        </div>
+                        <button onclick="visitLocation(${spot.latitude}, ${spot.longitude}, '${spot.name}')" class="w-full mt-2 py-1.5 bg-netflixRed text-white font-bold text-[10px] rounded-lg shadow flex items-center justify-center gap-1">
                             <i data-lucide="navigation" class="w-3 h-3"></i>
                             <span>Visit Location</span>
                         </button>
@@ -1141,21 +1279,23 @@
         function renderPendingRequests(requests) {
             const container = document.getElementById('pending-requests-list');
             if (!requests || requests.length === 0) {
-                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6">No pending proposals.</p>`;
+                container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-6 col-span-full">No pending proposals.</p>`;
                 return;
             }
 
             container.innerHTML = requests.map(r => `
-                <div class="bg-netflixCard p-3.5 rounded-2xl border border-zinc-800 shadow-md space-y-2">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded uppercase">Pending Review</span>
-                            <h5 class="text-xs font-bold text-white mt-1">${r.name}</h5>
-                            <p class="text-[10px] text-zinc-400">Staff: <b>${r.users ? r.users.username : 'LGU Staff'}</b></p>
+                <div class="bg-netflixCard p-3.5 rounded-2xl border border-zinc-800 shadow-md space-y-2 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-[9px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded uppercase">Pending Review</span>
+                                <h5 class="text-xs font-bold text-white mt-1">${r.name}</h5>
+                                <p class="text-[10px] text-zinc-400">Staff: <b>${r.users ? r.users.username : 'LGU Staff'}</b></p>
+                            </div>
                         </div>
+                        <p class="text-[11px] text-zinc-300 line-clamp-3 mt-1">${r.description}</p>
                     </div>
-                    <p class="text-[11px] text-zinc-300 line-clamp-2">${r.description}</p>
-                    <div class="flex gap-2 pt-1">
+                    <div class="flex gap-2 pt-2 border-t border-zinc-800/80">
                         <button onclick="processApplication(${r.id}, 'approved')" class="flex-1 py-1.5 bg-netflixRed text-white font-bold text-[10px] rounded-lg shadow">Approve</button>
                         <button onclick="processApplication(${r.id}, 'declined')" class="flex-1 py-1.5 bg-zinc-800 text-zinc-300 font-bold text-[10px] rounded-lg shadow">Decline</button>
                     </div>
@@ -1192,7 +1332,7 @@
             }
 
             container.innerHTML = logs.map(l => `
-                <div class="p-3 text-[11px]">
+                <div class="p-3 text-[11px] hover:bg-zinc-900/50 transition">
                     <div class="flex justify-between font-bold text-zinc-200">
                         <span>[${l.action}] by ${l.username_used}</span>
                         <span class="text-[9px] text-zinc-500 font-normal">${new Date(l.created_at).toLocaleTimeString()}</span>
@@ -1208,18 +1348,32 @@
                 if (el) el.classList.add('hidden');
             });
 
+            // RESET MOBILE NAV
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('text-netflixRed', 'font-bold');
                 btn.classList.add('text-zinc-500');
             });
 
+            // RESET ADMIN SIDEBAR NAV
+            document.querySelectorAll('.admin-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-netflixRed', 'text-white');
+                btn.classList.add('text-zinc-400');
+            });
+
             const selectedPanel = document.getElementById(`panel-${tab}`);
-            const selectedBtn = document.getElementById(`nav-${tab}`);
+            const selectedMobileBtn = document.getElementById(`nav-${tab}`);
+            const selectedAdminBtn = document.getElementById(`admin-nav-${tab}`);
 
             if (selectedPanel) selectedPanel.classList.remove('hidden');
-            if (selectedBtn) {
-                selectedBtn.classList.remove('text-zinc-500');
-                selectedBtn.classList.add('text-netflixRed', 'font-bold');
+
+            if (selectedMobileBtn) {
+                selectedMobileBtn.classList.remove('text-zinc-500');
+                selectedMobileBtn.classList.add('text-netflixRed', 'font-bold');
+            }
+
+            if (selectedAdminBtn) {
+                selectedAdminBtn.classList.remove('text-zinc-400');
+                selectedAdminBtn.classList.add('bg-netflixRed', 'text-white');
             }
 
             if (tab === 'map') setTimeout(initMap, 200);
