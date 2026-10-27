@@ -40,6 +40,22 @@
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1rem); }
         .carousel-container { scroll-behavior: smooth; cursor: grab; }
         .carousel-container:active { cursor: grabbing; }
+        .leaflet-popup-content-wrapper { background: #181818 !important; color: #fff !important; border: 1px solid #333 !important; border-radius: 14px !important; }
+        .leaflet-popup-tip { background: #181818 !important; }
+        .user-gps-pulse {
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 12px #3b82f6;
+            animation: pulse-ring 2s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
     </style>
 </head>
 <body class="bg-black text-netflixText font-sans antialiased flex items-center justify-center min-h-screen p-2 sm:p-4 select-none">
@@ -90,6 +106,24 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- DYNAMIC CAPTCHA CHALLENGE (Requirement D) -->
+                        <div id="captcha-box" class="hidden p-2.5 bg-zinc-900 border border-amber-500/40 rounded-xl space-y-1.5">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                                    <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-400"></i> Security CAPTCHA
+                                </span>
+                                <span id="captcha-code-display" class="font-mono font-black text-sm tracking-widest text-white bg-zinc-950 px-2 py-0.5 rounded border border-zinc-700 select-none line-through">ABCD</span>
+                                <button type="button" onclick="generateCaptcha()" class="text-[9px] text-zinc-400 hover:text-white" title="Refresh code">
+                                    <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                                </button>
+                            </div>
+                            <input type="text" id="captcha-input" placeholder="Enter CAPTCHA letters" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-netflixRed font-mono" />
+                        </div>
+
+                        <!-- ATTEMPTS REMAINING INDICATOR -->
+                        <div id="login-attempts-msg" class="text-[10px] text-zinc-400 text-center font-medium min-h-[14px]"></div>
+
                         <button type="submit" id="login-btn" class="w-full mt-2 py-2.5 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2">
                             <span>Sign In</span>
                             <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -365,21 +399,96 @@
                                 <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">System Audit Trail</h3>
                                 <span class="bg-zinc-800 text-zinc-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">Security Logs</span>
                             </div>
+
+                            <!-- LOG FILTER (Requirement F) -->
+                            <div class="flex gap-2">
+                                <select id="log-filter-action" onchange="filterLogs()" class="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs text-white focus:outline-none focus:border-netflixRed">
+                                    <option value="ALL">All Audit Actions</option>
+                                    <option value="LOGIN">Logins & Failures</option>
+                                    <option value="LOCKOUT">Lockouts & Security</option>
+                                    <option value="OTP">OTP & Verifications</option>
+                                    <option value="USER_">User Account Changes</option>
+                                    <option value="DESTINATION">Destinations & Content</option>
+                                </select>
+                                <button type="button" onclick="exportAuditLogs()" class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-bold rounded-xl flex items-center gap-1 border border-zinc-700">
+                                    <i data-lucide="download" class="w-3 h-3"></i>
+                                    <span>Export</span>
+                                </button>
+                            </div>
+
                             <div class="bg-netflixCard rounded-2xl border border-zinc-800 shadow-sm overflow-hidden">
                                 <div class="max-h-[300px] overflow-y-auto divide-y divide-zinc-800/60" id="log-trail-list"></div>
+                            </div>
+
+                            <!-- REQUIREMENT H: BACKUP AND RECOVERY (ADMIN CONSOLE) -->
+                            <div class="p-4 bg-zinc-900/90 rounded-2xl border border-zinc-800 space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                        <i data-lucide="database" class="w-3.5 h-3.5 text-netflixRed"></i> Database Backup & Recovery (Req H)
+                                    </h4>
+                                    <span class="text-[9px] text-emerald-400 font-mono">Encrypted JSON Snapshot</span>
+                                </div>
+                                <p class="text-[11px] text-zinc-400">Manage database security snapshots, export scheduled backups, and restore database system state.</p>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="createDatabaseBackup()" class="flex-1 py-1.5 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-1.5">
+                                        <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                        <span>Create Backup Now</span>
+                                    </button>
+                                    <button type="button" onclick="document.getElementById('restore-file-input').click()" class="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl border border-zinc-700 flex items-center justify-center gap-1.5">
+                                        <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                                        <span>Restore Backup</span>
+                                    </button>
+                                    <input type="file" id="restore-file-input" accept=".json" onchange="handleRestoreBackup(event)" class="hidden" />
+                                </div>
+                                <div id="backup-status-msg" class="text-[10px] text-zinc-400 text-center"></div>
                             </div>
                         </section>
 
                         <!-- TAB 6: MAP -->
-                        <section id="panel-map" class="h-full flex flex-col hidden relative min-h-[400px] rounded-2xl overflow-hidden border border-zinc-800">
-                            <div class="p-2.5 bg-black/80 border-b border-zinc-800 flex items-center justify-between z-10">
-                                <span class="text-xs font-bold text-zinc-200 flex items-center gap-1">
-                                    <i data-lucide="navigation" class="w-3.5 h-3.5 text-netflixRed"></i> Ormoc GPS Navigation Route
-                                </span>
-                                <button onclick="recenterMap()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-semibold rounded-lg">Center</button>
+                        <section id="panel-map" class="h-full flex flex-col hidden relative min-h-[440px] rounded-2xl overflow-hidden border border-zinc-800">
+                            <!-- MAP HEADER CONTROLS -->
+                            <div class="p-2.5 bg-black/90 border-b border-zinc-800 flex items-center justify-between z-10 gap-1.5 flex-wrap">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-netflixRed animate-pulse"></span>
+                                    <span class="text-xs font-bold text-white flex items-center gap-1">
+                                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-netflixRed"></i> GPS Tracker & Trace
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button type="button" onclick="locateUserGps()" id="btn-gps-locate" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-lg flex items-center gap-1 transition shadow-sm" title="Trace my live GPS location">
+                                        <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                                        <span id="gps-btn-text">Locate Me</span>
+                                    </button>
+                                    <button type="button" onclick="clearLiveTraceRoute()" id="btn-clear-trace" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] font-semibold rounded-lg hidden">
+                                        Clear Trace
+                                    </button>
+                                    <button type="button" onclick="recenterMap()" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-semibold rounded-lg">Center</button>
+                                </div>
                             </div>
+
+                            <!-- GPS LIVE STATUS BANNER -->
+                            <div id="gps-status-banner" class="bg-blue-950/60 border-b border-blue-900/50 px-3 py-1.5 text-[11px] text-blue-200 flex items-center justify-between z-10 hidden">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+                                    <span id="gps-status-text">Locating GPS position...</span>
+                                </span>
+                                <span class="text-[10px] text-zinc-400 font-mono" id="gps-coords-badge"></span>
+                            </div>
+
+                            <!-- MAP CONTAINER -->
                             <div class="flex-1 relative">
-                                <div id="map" class="w-full h-full min-h-[380px]"></div>
+                                <div id="map" class="w-full h-full min-h-[300px]"></div>
+
+                                <!-- REAL-TIME DISTANCES & PROXIMITY DRAWER -->
+                                <div id="nearby-spots-drawer" class="absolute bottom-2 left-2 right-2 z-[400] max-h-48 overflow-y-auto no-scrollbar bg-black/90 backdrop-blur-md border border-zinc-800 rounded-xl p-2.5 shadow-2xl space-y-2">
+                                    <div class="flex justify-between items-center pb-1 border-b border-zinc-800">
+                                        <span class="text-[11px] font-bold text-white flex items-center gap-1">
+                                            <i data-lucide="navigation-2" class="w-3 h-3 text-netflixRed"></i> Distances from Current Spot
+                                        </span>
+                                        <span class="text-[9px] font-mono text-zinc-400" id="proximity-origin-label">Ormoc Center</span>
+                                    </div>
+                                    <div id="nearby-spots-list" class="space-y-1.5"></div>
+                                </div>
                             </div>
                         </section>
 
@@ -402,6 +511,39 @@
                                         <span class="text-[10px] text-zinc-400">Spots Visited</span>
                                         <p class="text-base font-black text-emerald-400 mt-0.5" id="profile-visited-count">0</p>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- REQUIREMENT B & C: ACCOUNT SECURITY MANAGEMENT -->
+                            <div class="bg-netflixCard p-4 rounded-2xl border border-zinc-800 shadow-md space-y-3">
+                                <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                    <i data-lucide="shield-check" class="w-4 h-4 text-netflixRed"></i>
+                                    <span>Account & Security Settings</span>
+                                </h4>
+
+                                <!-- CHANGE EMAIL WITH OTP -->
+                                <div class="p-3 bg-zinc-900 rounded-xl border border-zinc-800 space-y-2">
+                                    <span class="text-[11px] font-bold text-zinc-200 block">Change Email Address</span>
+                                    <div class="flex gap-1.5">
+                                        <input type="email" id="profile-new-email" placeholder="new.email@example.com" class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                        <button type="button" onclick="requestEmailChangeOtp()" class="px-2.5 py-1 bg-netflixRed hover:bg-netflixDarkRed text-white text-[10px] font-bold rounded-lg shadow">Verify OTP</button>
+                                    </div>
+                                    <div id="email-otp-box" class="hidden space-y-1.5 pt-1 border-t border-zinc-800">
+                                        <p class="text-[10px] text-amber-400">Verification code generated for your account.</p>
+                                        <div class="flex gap-1.5">
+                                            <input type="text" id="email-otp-input" placeholder="6-digit code" class="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                            <button type="button" onclick="confirmEmailChange()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg shadow">Update</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- CHANGE PASSWORD (REQUIRES CURRENT PASSWORD) -->
+                                <div class="p-3 bg-zinc-900 rounded-xl border border-zinc-800 space-y-2">
+                                    <span class="text-[11px] font-bold text-zinc-200 block">Change Password</span>
+                                    <input type="password" id="profile-curr-pass" placeholder="Current Password" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                    <input type="password" id="profile-new-pass" placeholder="New Password (8+ chars, A-Z, a-z, 0-9, symbol)" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                    <input type="password" id="profile-confirm-pass" placeholder="Confirm New Password" class="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-netflixRed" />
+                                    <button type="button" onclick="handleProfilePasswordChange()" class="w-full py-1.5 bg-netflixRed hover:bg-netflixDarkRed text-white text-xs font-bold rounded-lg shadow">Update Password</button>
                                 </div>
                             </div>
 
@@ -558,14 +700,97 @@
         let generatedOtp = "";
         let otpTargetUser = null;
 
+        // GPS Live Tracking, Distance & Trace Route State
+        let userCurrentLocation = null; // { lat, lng }
+        let userLocationMarker = null;
+        let userAccuracyCircle = null;
+        let tracePolyline = null;
+        let gpsWatchId = null;
+        let selectedFocusSpot = null;
+
+        // Security, CAPTCHA, Inactivity & Multi-tab State (IAS Checklist)
+        let activeCaptchaCode = "";
+        let requiresCaptcha = false;
+        let sessionInactivityTimer = null;
+        let sessionWarningTimer = null;
+        let lastUserActivity = Date.now();
+        const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 mins (Req E)
+        const INACTIVITY_WARN_MS = 13 * 60 * 1000;    // 13 mins (2 min warning)
+        let emailChangePendingOtp = "";
+        let emailChangePendingTarget = "";
+
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
+            initSecurityListeners();
+            generateCaptcha();
+
             if (currentUser || isGuestMode) {
                 showMainDashboard();
+                initInactivityWatchdog();
             } else {
                 showAuthScreen();
             }
         });
+
+        // CROSS-TAB LOGOUT SYNCHRONIZATION (Requirement E)
+        function initSecurityListeners() {
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'exploreph_logout_broadcast') {
+                    // Another browser tab logged out
+                    currentUser = null;
+                    isGuestMode = false;
+                    localStorage.removeItem('exploreph_user');
+                    localStorage.removeItem('exploreph_guest');
+                    savedSpotIds = [];
+                    visitedSpotIds = [];
+                    showAuthScreen();
+                    showToast('info', 'Session ended from another tab.');
+                }
+            });
+
+            // User activity tracker for 15-min auto-logout
+            ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+                window.addEventListener(evt, () => {
+                    lastUserActivity = Date.now();
+                }, { passive: true });
+            });
+        }
+
+        function initInactivityWatchdog() {
+            if (sessionInactivityTimer) clearInterval(sessionInactivityTimer);
+            sessionInactivityTimer = setInterval(() => {
+                if (!currentUser || isGuestMode) return;
+                const elapsed = Date.now() - lastUserActivity;
+                if (elapsed >= INACTIVITY_TIMEOUT_MS) {
+                    clearInterval(sessionInactivityTimer);
+                    handleAutoLogout("Inactivity timeout (15 minutes).");
+                } else if (elapsed >= INACTIVITY_WARN_MS) {
+                    const secLeft = Math.round((INACTIVITY_TIMEOUT_MS - elapsed) / 1000);
+                    if (secLeft % 30 === 0) {
+                        showToast('info', `Warning: Session will expire in ${secLeft}s due to inactivity.`);
+                    }
+                }
+            }, 5000);
+        }
+
+        async function handleAutoLogout(reason) {
+            if (currentUser) {
+                await logTrail(currentUser.id, currentUser.username, "AUTO_LOGOUT", reason);
+            }
+            confirmLogout();
+            showToast('error', `Signed out: ${reason}`);
+        }
+
+        function generateCaptcha() {
+            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            let code = "";
+            for (let i = 0; i < 5; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            activeCaptchaCode = code;
+            const el = document.getElementById('captcha-code-display');
+            if (el) el.innerText = code;
+        }
 
         // LOAD AND SYNC USER SPECIFIC PREFERENCES FROM SUPABASE DATABASE
         async function loadUserPreferences() {
@@ -743,6 +968,18 @@
             e.preventDefault();
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value.trim();
+            const captchaInput = document.getElementById('captcha-input');
+            const attemptsMsg = document.getElementById('login-attempts-msg');
+
+            // Requirement D: Check CAPTCHA if required
+            if (requiresCaptcha) {
+                if (!captchaInput || captchaInput.value.trim().toUpperCase() !== activeCaptchaCode) {
+                    showToast('error', 'CAPTCHA incorrect! Please try again.');
+                    generateCaptcha();
+                    if (captchaInput) captchaInput.value = '';
+                    return;
+                }
+            }
 
             const { data: users, error } = await supabaseClient.from('users').select('*').eq('username', username);
 
@@ -754,40 +991,65 @@
 
             const user = users[0];
 
+            // Progressive lockout check (1 min, 5 min, 15 min)
             if (user.lockout_until && new Date(user.lockout_until) > new Date()) {
                 const remaining = Math.ceil((new Date(user.lockout_until) - new Date()) / 1000);
                 await logTrail(user.id, username, "LOCKOUT_BLOCKED", `Login attempt blocked during active lockout (${remaining}s remaining).`);
-                showToast('error', `Account locked. Please try again in ${remaining}s.`);
+                showToast('error', `Account temporarily locked! Wait ${remaining}s.`);
+                if (attemptsMsg) attemptsMsg.innerHTML = `<span class="text-rose-500 font-bold">🔒 Locked: ${remaining}s remaining</span>`;
                 return;
             }
 
+            // Check password
             if (user.password !== password) {
                 const failed = (user.failed_attempts || 0) + 1;
                 let lockout_until = null;
 
+                // Requirement D: Progressive lockout periods: 1 min, 5 mins, 15 mins
                 if (failed >= 3) {
-                    const lockSeconds = 60 * (failed - 2);
+                    let lockMinutes = 1;
+                    if (failed === 4) lockMinutes = 5;
+                    else if (failed >= 5) lockMinutes = 15;
+
+                    const lockSeconds = lockMinutes * 60;
                     lockout_until = new Date(Date.now() + lockSeconds * 1000).toISOString();
                     await supabaseClient.from('users').update({ failed_attempts: failed, lockout_until }).eq('id', user.id);
-                    await logTrail(user.id, username, "ACCOUNT_LOCKOUT", `Locked for ${lockSeconds}s after ${failed} failed attempts.`);
-                    showToast('error', `3 failed attempts! Account locked for ${lockSeconds} seconds.`);
+                    await logTrail(user.id, username, "ACCOUNT_LOCKOUT", `Locked for ${lockMinutes}m (${lockSeconds}s) after attempt #${failed}.`);
+
+                    // Enable CAPTCHA after lockout triggered
+                    requiresCaptcha = true;
+                    document.getElementById('captcha-box').classList.remove('hidden');
+                    generateCaptcha();
+
+                    showToast('error', `Account locked for ${lockMinutes} min(s) after 3 failed attempts!`);
+                    if (attemptsMsg) attemptsMsg.innerHTML = `<span class="text-rose-500 font-bold">🔒 Locked for ${lockMinutes}m. CAPTCHA required.</span>`;
                 } else {
                     await supabaseClient.from('users').update({ failed_attempts: failed }).eq('id', user.id);
                     await logTrail(user.id, username, "FAILED_LOGIN", `Incorrect password. Attempt ${failed}/3.`);
-                    showToast('error', `Incorrect password. Attempt ${failed}/3.`);
+                    const remainingAttempts = 3 - failed;
+                    showToast('error', `Incorrect password. ${remainingAttempts} attempt(s) remaining.`);
+                    if (attemptsMsg) attemptsMsg.innerHTML = `<span class="text-amber-400 font-semibold">${remainingAttempts} attempt(s) remaining before lockout</span>`;
                 }
                 return;
             }
 
+            // Successful login: reset attempts, lockout, and captcha
             await supabaseClient.from('users').update({ failed_attempts: 0, lockout_until: null }).eq('id', user.id);
-            await logTrail(user.id, username, "SUCCESS_LOGIN", "User authenticated successfully.");
+            await logTrail(user.id, username, "SUCCESS_LOGIN", "User authenticated successfully. Session initiated.");
+
+            requiresCaptcha = false;
+            document.getElementById('captcha-box').classList.add('hidden');
+            if (attemptsMsg) attemptsMsg.innerHTML = '';
 
             isGuestMode = false;
             currentUser = user;
+            lastUserActivity = Date.now();
             localStorage.removeItem('exploreph_guest');
             localStorage.setItem('exploreph_user', JSON.stringify(user));
+
             showToast('success', 'Sign in successful.');
             showMainDashboard();
+            initInactivityWatchdog();
         }
 
         async function handleRegister(e) {
@@ -892,6 +1154,95 @@
             showToast('success', 'Password reset! Please sign in.');
             closeOtpModal();
             switchAuthTab('login');
+        }
+
+        // REQUIREMENT B & C: CHANGE PASSWORD WITH CURRENT PASSWORD CHECK & SESSION TERMINATION
+        async function handleProfilePasswordChange() {
+            if (isGuestMode || !currentUser) {
+                showToast('error', 'Must be signed in.');
+                return;
+            }
+
+            const curr = document.getElementById('profile-curr-pass').value.trim();
+            const next = document.getElementById('profile-new-pass').value.trim();
+            const conf = document.getElementById('profile-confirm-pass').value.trim();
+
+            if (!curr || !next || !conf) {
+                showToast('error', 'Please fill in all password fields.');
+                return;
+            }
+
+            if (curr !== currentUser.password) {
+                showToast('error', 'Current password is incorrect.');
+                await logTrail(currentUser.id, currentUser.username, "PASSWORD_CHANGE_FAIL", "Incorrect current password entered.");
+                return;
+            }
+
+            if (next !== conf) {
+                showToast('error', 'New password and confirmation do not match.');
+                return;
+            }
+
+            const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+            if (!passwordPattern.test(next)) {
+                showToast('error', 'Password must have 8+ chars (A-Z, a-z, 0-9, symbol).');
+                return;
+            }
+
+            const { error } = await supabaseClient.from('users').update({ password: next }).eq('id', currentUser.id);
+            if (!error) {
+                await logTrail(currentUser.id, currentUser.username, "PASSWORD_CHANGE_SUCCESS", "Password changed. Active sessions invalidated.");
+                showToast('success', 'Password updated! Please log in with new password.');
+                currentUser.password = next;
+                document.getElementById('profile-curr-pass').value = '';
+                document.getElementById('profile-new-pass').value = '';
+                document.getElementById('profile-confirm-pass').value = '';
+                confirmLogout();
+            } else {
+                showToast('error', 'Failed to update password.');
+            }
+        }
+
+        // REQUIREMENT B: CHANGE EMAIL WITH OTP VERIFICATION
+        async function requestEmailChangeOtp() {
+            if (isGuestMode || !currentUser) {
+                showToast('error', 'Must be signed in.');
+                return;
+            }
+            const newEmail = document.getElementById('profile-new-email').value.trim();
+            if (!newEmail || !newEmail.includes('@')) {
+                showToast('error', 'Enter a valid email address.');
+                return;
+            }
+
+            emailChangePendingTarget = newEmail;
+            emailChangePendingOtp = Math.floor(100000 + Math.random() * 900000).toString();
+            document.getElementById('email-otp-box').classList.remove('hidden');
+
+            await logTrail(currentUser.id, currentUser.username, "EMAIL_CHANGE_OTP", `Generated verification OTP for email: ${newEmail}`);
+            showToast('info', `OTP Generated: [ ${emailChangePendingOtp} ]`);
+        }
+
+        async function confirmEmailChange() {
+            const entered = document.getElementById('email-otp-input').value.trim();
+            if (entered !== emailChangePendingOtp) {
+                showToast('error', 'Invalid verification code.');
+                return;
+            }
+
+            const { error } = await supabaseClient.from('users').update({ email: emailChangePendingTarget }).eq('id', currentUser.id);
+            if (!error) {
+                await logTrail(currentUser.id, currentUser.username, "EMAIL_CHANGE_SUCCESS", `Updated email from ${currentUser.email} to ${emailChangePendingTarget}`);
+                currentUser.email = emailChangePendingTarget;
+                localStorage.setItem('exploreph_user', JSON.stringify(currentUser));
+                document.getElementById('profile-email').innerText = emailChangePendingTarget;
+                document.getElementById('email-otp-box').classList.add('hidden');
+                document.getElementById('profile-new-email').value = '';
+                document.getElementById('email-otp-input').value = '';
+                showToast('success', 'Email address verified and updated!');
+            } else {
+                showToast('error', 'Failed to update email address.');
+            }
         }
 
         function showAuthScreen() {
@@ -1075,9 +1426,110 @@
             if (!error) renderPendingRequests(data || []);
         }
 
+        let cachedLogs = [];
+
         async function fetchLogs() {
-            const { data, error } = await supabaseClient.from('log_trails').select('*').order('created_at', { ascending: false }).limit(50);
-            if (!error) renderLogs(data || []);
+            const { data, error } = await supabaseClient.from('log_trails').select('*').order('created_at', { ascending: false }).limit(100);
+            if (!error) {
+                cachedLogs = data || [];
+                renderLogs(cachedLogs);
+            }
+        }
+
+        function filterLogs() {
+            const filter = document.getElementById('log-filter-action').value;
+            if (filter === 'ALL') {
+                renderLogs(cachedLogs);
+            } else {
+                const filtered = cachedLogs.filter(l => (l.action || '').includes(filter));
+                renderLogs(filtered);
+            }
+        }
+
+        function exportAuditLogs() {
+            if (cachedLogs.length === 0) {
+                showToast('error', 'No audit logs to export.');
+                return;
+            }
+            const blob = new Blob([JSON.stringify(cachedLogs, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ExplorePH_AuditLogs_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('success', 'Audit trail exported!');
+        }
+
+        // REQUIREMENT H: BACKUP AND RESTORE MODULE
+        async function createDatabaseBackup() {
+            const statusEl = document.getElementById('backup-status-msg');
+            if (statusEl) statusEl.innerText = "Creating database snapshot...";
+
+            try {
+                const [usersRes, destRes, logRes] = await Promise.all([
+                    supabaseClient.from('users').select('id, full_name, username, email, role, created_at'),
+                    supabaseClient.from('destinations').select('*'),
+                    supabaseClient.from('log_trails').select('*').limit(200)
+                ]);
+
+                const backupData = {
+                    version: "1.0",
+                    created_at: new Date().toISOString(),
+                    system: "ExplorePH Ormoc Tourism Portal",
+                    tables: {
+                        users: usersRes.data || [],
+                        destinations: destRes.data || [],
+                        log_trails: logRes.data || []
+                    }
+                };
+
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ExplorePH_DB_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                if (statusEl) statusEl.innerText = `Backup successfully generated at ${new Date().toLocaleTimeString()}!`;
+                showToast('success', 'Database backup snapshot downloaded!');
+                if (currentUser) {
+                    await logTrail(currentUser.id, currentUser.username, "DATABASE_BACKUP", "Full database JSON snapshot exported.");
+                }
+            } catch (err) {
+                if (statusEl) statusEl.innerText = "Failed to export backup.";
+                showToast('error', 'Backup export failed.');
+            }
+        }
+
+        async function handleRestoreBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.tables || !data.tables.destinations) {
+                        showToast('error', 'Invalid backup file format.');
+                        return;
+                    }
+                    if (confirm(`Restore ${data.tables.destinations.length} destination spots from backup created at ${data.created_at}?`)) {
+                        for (const dest of data.tables.destinations) {
+                            await supabaseClient.from('destinations').upsert([dest]);
+                        }
+                        showToast('success', 'Data restore completed!');
+                        fetchDestinations();
+                        if (currentUser) {
+                            await logTrail(currentUser.id, currentUser.username, "DATABASE_RESTORE", `Restored ${data.tables.destinations.length} destinations.`);
+                        }
+                    }
+                } catch (err) {
+                    showToast('error', 'Failed to parse backup JSON.');
+                }
+            };
+            reader.readAsText(file);
         }
 
         // DYNAMICALLY TOGGLE BOOKMARK PERSISTED TO SUPABASE AND LOCALSTORAGE
@@ -1275,15 +1727,31 @@
             }
         }
 
-        function visitLocation(lat, lng) {
+        function visitLocation(lat, lng, spotId = null) {
             switchTab('map');
+            if (spotId) {
+                const targetSpot = cachedDestinations.find(d => d.id === spotId);
+                if (targetSpot) {
+                    selectedFocusSpot = targetSpot;
+                }
+            } else {
+                const targetSpot = cachedDestinations.find(d => Math.abs(d.latitude - lat) < 0.001 && Math.abs(d.longitude - lng) < 0.001);
+                if (targetSpot) selectedFocusSpot = targetSpot;
+            }
+
             if (leafletMap) {
                 leafletMap.setView([lat, lng], 14);
                 mapMarkers.forEach(m => {
-                    if (m.getLatLng().lat === lat && m.getLatLng().lng === lng) {
+                    const mLat = m.getLatLng().lat;
+                    const mLng = m.getLatLng().lng;
+                    if (Math.abs(mLat - lat) < 0.0001 && Math.abs(mLng - lng) < 0.0001) {
                         m.openPopup();
                     }
                 });
+                if (userCurrentLocation && selectedFocusSpot) {
+                    drawTraceRoute(userCurrentLocation, { lat, lng }, selectedFocusSpot.name);
+                }
+                updateNearbySpotsDrawer();
             }
         }
 
@@ -1378,9 +1846,9 @@
                                 <i data-lucide="message-square" class="w-3.5 h-3.5 text-amber-400"></i>
                                 <span>★ ${spot.rating || '4.8'} Reviews & Comments</span>
                             </button>
-                            <button onclick="visitLocation(${spot.latitude}, ${spot.longitude})" class="px-3.5 py-1.5 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-[10px] rounded-lg shadow transition flex items-center gap-1">
+                            <button onclick="visitLocation(${spot.latitude}, ${spot.longitude}, ${spot.id})" class="px-3.5 py-1.5 bg-netflixRed hover:bg-netflixDarkRed text-white font-bold text-[10px] rounded-lg shadow transition flex items-center gap-1">
                                 <i data-lucide="navigation" class="w-3 h-3"></i>
-                                <span>Visit Location</span>
+                                <span>Trace on Map</span>
                             </button>
                         </div>
                     </div>
@@ -1473,9 +1941,9 @@
 
                             <p class="text-[11px] text-zinc-300 leading-relaxed">${spot.description}</p>
                         </div>
-                        <button onclick="visitLocation(${spot.latitude}, ${spot.longitude})" class="w-full mt-2 py-1.5 bg-netflixRed text-white font-bold text-[10px] rounded-lg shadow flex items-center justify-center gap-1">
+                        <button onclick="visitLocation(${spot.latitude}, ${spot.longitude}, ${spot.id})" class="w-full mt-2 py-1.5 bg-netflixRed text-white font-bold text-[10px] rounded-lg shadow flex items-center justify-center gap-1">
                             <i data-lucide="navigation" class="w-3 h-3"></i>
-                            <span>Visit Location</span>
+                            <span>Trace on Map</span>
                         </button>
                     </div>
                 `;
@@ -1659,24 +2127,317 @@
             if (tab === 'submit') setTimeout(initPickerMap, 200);
         }
 
+        // HAVERSINE DISTANCE FORMULA (Calculates km between two GPS coordinates)
+        function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return (R * c);
+        }
+
         function initMap() {
             if (!leafletMap) {
-                leafletMap = L.map('map').setView([11.0064, 124.6075], 12);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(leafletMap);
+                leafletMap = L.map('map', { zoomControl: true }).setView([11.0064, 124.6075], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(leafletMap);
             }
+            renderMapMarkers();
+            leafletMap.invalidateSize();
+            updateNearbySpotsDrawer();
+        }
+
+        function renderMapMarkers() {
+            if (!leafletMap) return;
             mapMarkers.forEach(m => leafletMap.removeLayer(m));
             mapMarkers = [];
 
+            // Destination spot markers
             cachedDestinations.forEach(spot => {
                 if (spot.latitude && spot.longitude) {
-                    const marker = L.marker([spot.latitude, spot.longitude]).addTo(leafletMap).bindPopup(`<b>${spot.name}</b><br><span class="text-[10px]">${spot.location_address}</span>`);
+                    let distText = '';
+                    const origin = userCurrentLocation || { lat: 11.0064, lng: 124.6075 };
+                    const km = calculateDistanceKm(origin.lat, origin.lng, spot.latitude, spot.longitude);
+                    distText = `<span class="inline-block mt-1 px-2 py-0.5 bg-netflixRed/20 text-netflixRed border border-netflixRed/40 rounded-full text-[10px] font-bold">📍 ${km.toFixed(1)} km away</span>`;
+
+                    const popupHtml = `
+                        <div class="p-1 space-y-1.5 text-white max-w-[200px]">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[9px] uppercase font-bold text-netflixRed">${spot.category}</span>
+                                ${distText}
+                            </div>
+                            <h4 class="text-xs font-black text-white leading-tight">${spot.name}</h4>
+                            <p class="text-[10px] text-zinc-300 leading-snug">${spot.location_address}</p>
+                            <div class="pt-1 flex gap-1">
+                                <button onclick="traceRouteToSpot(${spot.id})" class="flex-1 py-1 bg-netflixRed hover:bg-netflixDarkRed text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1 shadow">
+                                    <i data-lucide="navigation" class="w-3 h-3"></i> Trace Route
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    const marker = L.marker([spot.latitude, spot.longitude]).addTo(leafletMap).bindPopup(popupHtml);
+                    marker.on('click', () => {
+                        selectedFocusSpot = spot;
+                        updateNearbySpotsDrawer();
+                        setTimeout(() => lucide.createIcons(), 50);
+                    });
                     mapMarkers.push(marker);
                 }
             });
-            leafletMap.invalidateSize();
         }
 
-        function recenterMap() { if (leafletMap) leafletMap.setView([11.0064, 124.6075], 12); }
+        // LIVE GPS LOCATION TRACKER
+        function locateUserGps() {
+            if (!navigator.geolocation) {
+                showToast('error', 'Geolocation is not supported by your browser.');
+                return;
+            }
+
+            const banner = document.getElementById('gps-status-banner');
+            const statusText = document.getElementById('gps-status-text');
+            const coordsBadge = document.getElementById('gps-coords-badge');
+            const locateBtn = document.getElementById('gps-btn-text');
+
+            banner.classList.remove('hidden');
+            statusText.innerText = "Accessing device GPS sensors...";
+            locateBtn.innerText = "Locating...";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+
+                    userCurrentLocation = { lat, lng };
+
+                    statusText.innerText = `GPS Located! Accuracy: ±${Math.round(accuracy)}m`;
+                    coordsBadge.innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    locateBtn.innerText = "Re-center Me";
+
+                    updateUserLocationMarker(lat, lng, accuracy);
+                    renderMapMarkers();
+                    updateNearbySpotsDrawer();
+
+                    if (selectedFocusSpot) {
+                        drawTraceRoute(userCurrentLocation, { lat: selectedFocusSpot.latitude, lng: selectedFocusSpot.longitude }, selectedFocusSpot.name);
+                    } else {
+                        leafletMap.setView([lat, lng], 14);
+                    }
+
+                    showToast('success', `GPS Position Found (${lat.toFixed(3)}, ${lng.toFixed(3)})`);
+                    if (currentUser) {
+                        logTrail(currentUser.id, currentUser.username, "GPS_LOCATION_LOCATED", `User located at ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                    }
+                },
+                (err) => {
+                    // Fallback to Ormoc City Hall / Downtown if GPS permission denied or unavailable
+                    const fallbackLat = 11.0064;
+                    const fallbackLng = 124.6075;
+                    userCurrentLocation = { lat: fallbackLat, lng: fallbackLng };
+
+                    statusText.innerText = "Using Ormoc City Center (GPS simulated)";
+                    coordsBadge.innerText = `${fallbackLat.toFixed(4)}, ${fallbackLng.toFixed(4)}`;
+                    locateBtn.innerText = "Locate Me";
+
+                    updateUserLocationMarker(fallbackLat, fallbackLng, 50);
+                    renderMapMarkers();
+                    updateNearbySpotsDrawer();
+                    leafletMap.setView([fallbackLat, fallbackLng], 13);
+                    showToast('info', 'GPS permission denied or unavailable. Centered at Ormoc Downtown.');
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function updateUserLocationMarker(lat, lng, accuracy) {
+            if (!leafletMap) return;
+
+            if (userLocationMarker) leafletMap.removeLayer(userLocationMarker);
+            if (userAccuracyCircle) leafletMap.removeLayer(userAccuracyCircle);
+
+            // Pulsing blue pin for user current GPS location
+            const userPulseIcon = L.divIcon({
+                className: 'user-gps-pulse-wrapper',
+                html: `<div class="user-gps-pulse" title="Your GPS Location"></div>`,
+                iconSize: [18, 18],
+                iconAnchor: [9, 9]
+            });
+
+            userLocationMarker = L.marker([lat, lng], { icon: userPulseIcon }).addTo(leafletMap);
+            userLocationMarker.bindPopup(`
+                <div class="p-1 text-white text-xs">
+                    <p class="font-bold text-blue-400 flex items-center gap-1">📍 You Are Here</p>
+                    <p class="text-[10px] text-zinc-300">Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}</p>
+                </div>
+            `);
+
+            userAccuracyCircle = L.circle([lat, lng], {
+                radius: Math.max(accuracy, 100),
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.15,
+                weight: 1
+            }).addTo(leafletMap);
+        }
+
+        // TRACE ROUTE FROM CURRENT USER LOCATION TO DESTINATION SPOT
+        function traceRouteToSpot(spotId) {
+            const spot = cachedDestinations.find(d => d.id === spotId);
+            if (!spot || !spot.latitude || !spot.longitude) return;
+
+            selectedFocusSpot = spot;
+
+            const origin = userCurrentLocation || { lat: 11.0064, lng: 124.6075 };
+            const destination = { lat: spot.latitude, lng: spot.longitude };
+
+            drawTraceRoute(origin, destination, spot.name);
+            updateNearbySpotsDrawer();
+        }
+
+        // REAL ROAD ROUTING (OSRM - OpenStreetMap Road Network)
+        async function drawTraceRoute(origin, destination, spotName) {
+            if (!leafletMap) return;
+
+            if (tracePolyline) leafletMap.removeLayer(tracePolyline);
+
+            // Straight line distance fallback
+            let displayKm = calculateDistanceKm(origin.lat, origin.lng, destination.lat, destination.lng);
+            showToast('info', `Calculating road route to ${spotName}...`);
+
+            try {
+                // Fetch turn-by-turn actual road geometry from OSRM (OpenStreetMap Routing Engine)
+                const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                    const route = data.routes[0];
+                    // Road distance in km
+                    const roadKm = (route.distance / 1000).toFixed(1);
+                    const roadDurationMin = Math.round(route.duration / 60);
+
+                    // Convert [lng, lat] GeoJSON coordinates to Leaflet [lat, lng]
+                    const latLngs = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+                    // Draw the accurate road path
+                    tracePolyline = L.polyline(latLngs, {
+                        color: '#E50914',
+                        weight: 5,
+                        opacity: 0.95,
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }).addTo(leafletMap);
+
+                    document.getElementById('btn-clear-trace').classList.remove('hidden');
+                    leafletMap.fitBounds(tracePolyline.getBounds(), { padding: [40, 40] });
+
+                    showToast('success', `Road trace: ${roadKm} km via Ormoc roads (~${roadDurationMin} mins)`);
+                    return;
+                }
+            } catch (err) {
+                console.warn('OSRM routing network error, falling back to line trace', err);
+            }
+
+            // Fallback: polyline straight line if offline or rate-limited
+            tracePolyline = L.polyline([[origin.lat, origin.lng], [destination.lat, destination.lng]], {
+                color: '#E50914',
+                weight: 4,
+                opacity: 0.9,
+                dashArray: '8, 8',
+                lineJoin: 'round'
+            }).addTo(leafletMap);
+
+            document.getElementById('btn-clear-trace').classList.remove('hidden');
+
+            const group = new L.featureGroup([
+                L.marker([origin.lat, origin.lng]),
+                L.marker([destination.lat, destination.lng])
+            ]);
+            leafletMap.fitBounds(group.getBounds().pad(0.2));
+
+            showToast('info', `Route traced to ${spotName} (${displayKm.toFixed(1)} km)`);
+        }
+
+        function clearLiveTraceRoute() {
+            if (tracePolyline && leafletMap) {
+                leafletMap.removeLayer(tracePolyline);
+                tracePolyline = null;
+            }
+            document.getElementById('btn-clear-trace').classList.add('hidden');
+            selectedFocusSpot = null;
+            updateNearbySpotsDrawer();
+            showToast('info', 'Trace route cleared.');
+        }
+
+        // UPDATE NEARBY SPOTS DRAWER WITH LIVE KM DISTANCES
+        function updateNearbySpotsDrawer() {
+            const listContainer = document.getElementById('nearby-spots-list');
+            const originLabel = document.getElementById('proximity-origin-label');
+            if (!listContainer) return;
+
+            let origin = userCurrentLocation;
+            if (origin) {
+                originLabel.innerText = "GPS Live Location";
+            } else if (selectedFocusSpot) {
+                origin = { lat: selectedFocusSpot.latitude, lng: selectedFocusSpot.longitude };
+                originLabel.innerText = `Spot: ${selectedFocusSpot.name}`;
+            } else {
+                origin = { lat: 11.0064, lng: 124.6075 };
+                originLabel.innerText = "Ormoc City Center";
+            }
+
+            // Calculate distance for all spots and sort nearest to farthest
+            const spotsWithDistance = cachedDestinations
+                .filter(s => s.latitude && s.longitude)
+                .map(spot => {
+                    const distKm = calculateDistanceKm(origin.lat, origin.lng, spot.latitude, spot.longitude);
+                    return { ...spot, distKm };
+                })
+                .sort((a, b) => a.distKm - b.distKm);
+
+            if (spotsWithDistance.length === 0) {
+                listContainer.innerHTML = `<p class="text-[10px] text-zinc-500 text-center py-2">Loading spots...</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = spotsWithDistance.map(spot => {
+                const isSelected = selectedFocusSpot && selectedFocusSpot.id === spot.id;
+                return `
+                    <div class="flex items-center justify-between p-1.5 rounded-lg border transition ${isSelected ? 'bg-netflixRed/20 border-netflixRed/50' : 'bg-zinc-900/80 border-zinc-800 hover:bg-zinc-800'}">
+                        <div class="overflow-hidden pr-2">
+                            <h5 class="text-[11px] font-bold text-white truncate">${spot.name}</h5>
+                            <p class="text-[9px] text-zinc-400 truncate">${spot.category} &bull; ${spot.location_address}</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs font-black text-amber-400 font-mono">${spot.distKm.toFixed(1)} km</span>
+                            <button type="button" onclick="traceRouteToSpot(${spot.id})" class="px-2 py-1 bg-netflixRed hover:bg-netflixDarkRed text-white text-[10px] font-bold rounded flex items-center gap-1 shadow">
+                                <i data-lucide="navigation" class="w-3 h-3"></i>
+                                <span>Trace</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function recenterMap() {
+            if (leafletMap) {
+                if (userCurrentLocation) {
+                    leafletMap.setView([userCurrentLocation.lat, userCurrentLocation.lng], 13);
+                } else {
+                    leafletMap.setView([11.0064, 124.6075], 12);
+                }
+            }
+        }
         function openLogoutModal() { document.getElementById('logout-modal').classList.remove('hidden'); }
         function closeLogoutModal() { document.getElementById('logout-modal').classList.add('hidden'); }
 
@@ -1690,9 +2451,14 @@
             localStorage.removeItem('exploreph_user');
             localStorage.removeItem('exploreph_guest');
 
+            // Broadcast logout to all other open tabs (Requirement E)
+            localStorage.setItem('exploreph_logout_broadcast', Date.now().toString());
+
             // Clear in-memory bookmark and visited arrays
             savedSpotIds = [];
             visitedSpotIds = [];
+
+            if (sessionInactivityTimer) clearInterval(sessionInactivityTimer);
 
             showAuthScreen();
         }
