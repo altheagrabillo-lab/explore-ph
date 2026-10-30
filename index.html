@@ -30,6 +30,24 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Mermaid JS Diagram Renderer (For SIA Architecture Viewer) -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#141414',
+                primaryColor: '#E50914',
+                primaryTextColor: '#ffffff',
+                primaryBorderColor: '#B81D24',
+                lineColor: '#E50914',
+                secondaryColor: '#2F2F2F',
+                tertiaryColor: '#181818'
+            }
+        });
+    </script>
 
     <style>
         ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -370,6 +388,23 @@
 
                         <!-- TAB 5: ADMIN LOGS & ANALYTICS -->
                         <section id="panel-logs" class="space-y-4 hidden">
+                            <!-- SIA ARCHITECTURE QUICK BANNER -->
+                            <div class="p-3.5 bg-gradient-to-r from-zinc-900 via-zinc-950 to-netflixCard border border-zinc-800 rounded-2xl flex items-center justify-between shadow-md">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-netflixRed/20 text-netflixRed border border-netflixRed/40 flex items-center justify-center font-black">
+                                        <i data-lucide="layers" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-black text-white uppercase tracking-wider">System Integration & Architecture (SIA)</h4>
+                                        <p class="text-[10px] text-zinc-400">Interactive UML, ERD, Swimlanes & Network flow</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="switchTab('sia')" class="px-3 py-1.5 bg-netflixRed hover:bg-netflixDarkRed text-white text-[11px] font-bold rounded-xl transition shadow flex items-center gap-1.5">
+                                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                    <span>View SIA Diagrams</span>
+                                </button>
+                            </div>
+
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-2" id="admin-stats-grid">
                                 <div class="bg-netflixCard p-3 rounded-2xl border border-zinc-800 text-center shadow-md">
                                     <span class="text-[10px] text-zinc-400 font-medium">Total Spots</span>
@@ -444,6 +479,78 @@
                             </div>
                         </section>
 
+                        <!-- TAB: SIA ARCHITECTURE MANUAL & DIAGRAM VIEWER (ADMIN ONLY) -->
+                        <section id="panel-sia" class="space-y-4 hidden">
+                            <div class="p-4 rounded-2xl bg-gradient-to-r from-netflixRed via-zinc-900 to-black text-white border border-zinc-800 shadow-xl flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-base font-black uppercase tracking-wider flex items-center gap-2">
+                                        <i data-lucide="layers" class="w-5 h-5 text-white"></i> System Integration & Architecture (SIA)
+                                    </h3>
+                                    <p class="text-[11px] text-zinc-300 mt-0.5">Formal Technical Architecture Specifications & Dynamic UML/ERD Diagrams</p>
+                                </div>
+                                <span class="px-2.5 py-1 bg-black/60 border border-zinc-700 text-netflixRed text-[10px] font-bold rounded-lg uppercase">Finals Compliant</span>
+                            </div>
+
+                            <!-- DIAGRAM SELECTOR TABS -->
+                            <div class="flex bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800 gap-1 overflow-x-auto no-scrollbar">
+                                <button type="button" onclick="switchSiaSubtab('usecase')" id="sia-tab-usecase" class="sia-subtab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-netflixRed shadow transition whitespace-nowrap">
+                                    1. Use Case Diagram
+                                </button>
+                                <button type="button" onclick="switchSiaSubtab('swimlane')" id="sia-tab-swimlane" class="sia-subtab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-400 hover:text-white transition whitespace-nowrap">
+                                    2. System Flow (Swimlanes)
+                                </button>
+                                <button type="button" onclick="switchSiaSubtab('erd')" id="sia-tab-erd" class="sia-subtab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-400 hover:text-white transition whitespace-nowrap">
+                                    3. Entity Relationship (ERD)
+                                </button>
+                                <button type="button" onclick="switchSiaSubtab('flowchart')" id="sia-tab-flowchart" class="sia-subtab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-400 hover:text-white transition whitespace-nowrap">
+                                    4. System Flowchart
+                                </button>
+                                <button type="button" onclick="switchSiaSubtab('network')" id="sia-tab-network" class="sia-subtab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-400 hover:text-white transition whitespace-nowrap">
+                                    5. Network Flow Diagram
+                                </button>
+                            </div>
+
+                            <!-- DIAGRAM VIEW CANVAS -->
+                            <div class="bg-netflixCard p-4 rounded-2xl border border-zinc-800 shadow-xl space-y-3">
+                                <div class="flex justify-between items-center pb-2 border-b border-zinc-800/80 gap-2 flex-wrap">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-white uppercase tracking-wider" id="sia-diagram-title">1. Use Case Diagram (System Users)</h4>
+                                        <p class="text-[10px] text-zinc-400" id="sia-diagram-subtitle">UML diagram identifying system actors and functional boundaries</p>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <!-- ZOOM / PAN TOOLBAR CONTROLS -->
+                                        <div class="flex items-center bg-zinc-900 border border-zinc-700/80 rounded-lg p-0.5">
+                                            <button type="button" onclick="zoomSiaDiagram(0.15)" class="p-1 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded transition" title="Zoom In (+)">
+                                                <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
+                                            </button>
+                                            <button type="button" onclick="zoomSiaDiagram(-0.15)" class="p-1 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded transition" title="Zoom Out (-)">
+                                                <i data-lucide="zoom-out" class="w-3.5 h-3.5"></i>
+                                            </button>
+                                            <button type="button" onclick="resetSiaZoomPan()" class="p-1 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded transition" title="Reset View">
+                                                <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
+                                            </button>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-700 text-[10px] font-mono text-amber-400 font-bold" id="sia-badge-format">Standard UML</span>
+                                    </div>
+                                </div>
+
+                                <!-- INTERACTIVE DIAGRAM RENDER AREA (PAN & ZOOM CAPABLE) -->
+                                <div id="sia-diagram-container" class="w-full relative overflow-hidden bg-zinc-950/90 rounded-xl border border-zinc-900 h-[460px] flex items-center justify-center select-none cursor-grab active:cursor-grabbing">
+                                    <div id="sia-mermaid-render" class="w-full h-full flex items-center justify-center transition-transform duration-75 origin-center"></div>
+
+                                    <!-- INTERACTIVE HINT BADGE (As shown in user design reference) -->
+                                    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-black/85 backdrop-blur-md border border-zinc-700/60 rounded-full px-3 py-1 shadow-2xl flex items-center gap-1.5 text-[10px] text-zinc-300 font-medium">
+                                        <span class="text-amber-400">💡</span>
+                                        <span>Click & drag to pan &bull; Mouse wheel or + / - to zoom</span>
+                                    </div>
+                                </div>
+
+                                <!-- ARCHITECTURE EXPLANATION CALLOUT -->
+                                <div id="sia-diagram-desc" class="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800 text-[11px] text-zinc-300 leading-relaxed space-y-1">
+                                </div>
+                            </div>
+                        </section>
+
                         <!-- TAB 6: MAP -->
                         <section id="panel-map" class="h-full flex flex-col hidden relative min-h-[440px] rounded-2xl overflow-hidden border border-zinc-800">
                             <!-- MAP HEADER CONTROLS -->
@@ -455,9 +562,13 @@
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-1">
-                                    <button type="button" onclick="locateUserGps()" id="btn-gps-locate" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-lg flex items-center gap-1 transition shadow-sm" title="Trace my live GPS location">
+                                    <button type="button" onclick="locateUserGps(true)" id="btn-gps-locate" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-lg flex items-center gap-1 transition shadow-sm" title="Trace my live device GPS location">
                                         <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
-                                        <span id="gps-btn-text">Locate Me</span>
+                                        <span id="gps-btn-text">Locate Device GPS</span>
+                                    </button>
+                                    <button type="button" onclick="toggleContinuousGpsTracking()" id="btn-gps-track" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] font-semibold rounded-lg flex items-center gap-1" title="Continuous GPS Live Tracking">
+                                        <i data-lucide="radio" class="w-3.5 h-3.5 text-zinc-400" id="gps-track-icon"></i>
+                                        <span id="gps-track-text">Live Track</span>
                                     </button>
                                     <button type="button" onclick="clearLiveTraceRoute()" id="btn-clear-trace" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] font-semibold rounded-lg hidden">
                                         Clear Trace
@@ -473,6 +584,32 @@
                                     <span id="gps-status-text">Locating GPS position...</span>
                                 </span>
                                 <span class="text-[10px] text-zinc-400 font-mono" id="gps-coords-badge"></span>
+                            </div>
+
+                            <!-- REAL-TIME ROAD ROUTING HUD (Distance & ETA Banner) -->
+                            <div id="route-hud-banner" class="bg-zinc-950/95 border-b border-netflixRed/50 px-3 py-2 text-xs text-white flex items-center justify-between z-10 hidden shadow-lg">
+                                <div class="flex items-center gap-2 overflow-hidden">
+                                    <div class="w-7 h-7 rounded-lg bg-netflixRed/20 text-netflixRed flex items-center justify-center shrink-0 border border-netflixRed/40">
+                                        <i data-lucide="navigation" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="truncate">
+                                        <h5 class="font-black text-white truncate text-[11px]" id="hud-dest-name">Destination</h5>
+                                        <p class="text-[9px] text-zinc-400 flex items-center gap-1.5">
+                                            <span class="text-amber-400 font-bold font-mono" id="hud-dest-dist">0.0 km</span>
+                                            <span>&bull;</span>
+                                            <span class="text-emerald-400 font-bold" id="hud-dest-time">~0 mins drive</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <a id="btn-open-google-maps" href="#" target="_blank" class="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold rounded-lg flex items-center gap-1 border border-zinc-700" title="Open in Google Maps">
+                                        <i data-lucide="external-link" class="w-3 h-3"></i>
+                                        <span>G-Maps</span>
+                                    </a>
+                                    <button type="button" onclick="clearLiveTraceRoute()" class="p-1 text-zinc-400 hover:text-white rounded-lg">
+                                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- MAP CONTAINER -->
@@ -900,6 +1037,7 @@
                 { id: 'explore', icon: 'compass', label: 'Explore Destinations' },
                 { id: 'approvals', icon: 'check-square', label: 'Content Approvals' },
                 { id: 'logs', icon: 'bar-chart-3', label: 'Analytics & Logs' },
+                { id: 'sia', icon: 'layers', label: 'SIA Architecture & Diagrams' },
                 { id: 'map', icon: 'map', label: 'Ormoc Interactive Map' },
                 { id: 'profile', icon: 'user', label: 'Admin Account' }
             ];
@@ -1273,6 +1411,7 @@
                     { id: 'explore', icon: 'compass', label: 'Explore' },
                     { id: 'approvals', icon: 'check-square', label: 'Review' },
                     { id: 'logs', icon: 'bar-chart-3', label: 'Analytics' },
+                    { id: 'sia', icon: 'layers', label: 'SIA' },
                     { id: 'map', icon: 'map', label: 'Map' },
                     { id: 'profile', icon: 'user', label: 'Profile' }
                 ];
@@ -2092,7 +2231,7 @@
         }
 
         function switchTab(tab) {
-            ['explore', 'saved', 'submit', 'approvals', 'logs', 'map', 'profile'].forEach(t => {
+            ['explore', 'saved', 'submit', 'approvals', 'logs', 'sia', 'map', 'profile'].forEach(t => {
                 const el = document.getElementById(`panel-${t}`);
                 if (el) el.classList.add('hidden');
             });
@@ -2125,6 +2264,371 @@
 
             if (tab === 'map') setTimeout(initMap, 200);
             if (tab === 'submit') setTimeout(initPickerMap, 200);
+            if (tab === 'sia') setTimeout(() => renderSiaDiagram(currentSiaSubtab), 150);
+        }
+
+        // ============================================================================
+        // SIA (SYSTEM INTEGRATION & ARCHITECTURE) DYNAMIC VIEWER MODULE
+        // ============================================================================
+        let currentSiaSubtab = 'usecase';
+        let siaZoomScale = 1.0;
+        let siaPanX = 0;
+        let siaPanY = 0;
+        let isSiaPanning = false;
+        let siaPanStartX = 0;
+        let siaPanStartY = 0;
+        let siaPanInitialized = false;
+
+        function initSiaPanZoomListeners() {
+            if (siaPanInitialized) return;
+            const container = document.getElementById('sia-diagram-container');
+            if (!container) return;
+            siaPanInitialized = true;
+
+            container.addEventListener('mousedown', (e) => {
+                isSiaPanning = true;
+                siaPanStartX = e.clientX - siaPanX;
+                siaPanStartY = e.clientY - siaPanY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isSiaPanning) return;
+                siaPanX = e.clientX - siaPanStartX;
+                siaPanY = e.clientY - siaPanStartY;
+                applySiaTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                isSiaPanning = false;
+            });
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.12 : -0.12;
+                zoomSiaDiagram(delta);
+            }, { passive: false });
+        }
+
+        function zoomSiaDiagram(delta) {
+            siaZoomScale = Math.min(Math.max(0.35, siaZoomScale + delta), 3.0);
+            applySiaTransform();
+        }
+
+        function resetSiaZoomPan() {
+            siaZoomScale = 1.0;
+            siaPanX = 0;
+            siaPanY = 0;
+            applySiaTransform();
+        }
+
+        function applySiaTransform() {
+            const target = document.getElementById('sia-mermaid-render');
+            if (target) {
+                target.style.transform = `translate(${siaPanX}px, ${siaPanY}px) scale(${siaZoomScale})`;
+            }
+        }
+
+        const SIA_DIAGRAM_DEFINITIONS = {
+            usecase: {
+                title: "1. Use Case Diagram (System Users & Actors)",
+                subtitle: "UML Use Case representation displaying primary/secondary actors and functional boundaries",
+                badge: "Standard UML Notation",
+                desc: `<b>Actors:</b> Tourist (Primary), Tourism Staff (Contributor), Admin (Governance), Guest (Public), and External Systems (OSRM Router, Supabase BaaS).<br>
+                       <b>Key Boundaries:</b> Distinguishes public browsing from authenticated security flows, proposal moderation, GPS road tracing, and database snapshots.`,
+                code: `flowchart LR
+    subgraph Actors["System Actors"]
+        Guest["👤 Guest Traveler"]
+        Tourist["👤 Registered Tourist"]
+        Staff["👤 Tourism Staff"]
+        Admin["👤 System Administrator"]
+        OSRM["🌐 OSRM / OpenStreetMap"]
+        Supabase["☁️ Supabase Cloud DB"]
+    end
+
+    subgraph Portal["ExplorePH: Ormoc Tourism Portal"]
+        UC1["Explore Spots & Filter Categories"]
+        UC2["Live GPS Locate & Haversine Distance Calc"]
+        UC3["Turn-by-Turn Road Route Tracing"]
+        UC4["Authenticate (Sign In / Register / OTP Reset)"]
+        UC5["Manage Watchlist (Bookmarks & Visited Spots)"]
+        UC6["Submit Reviews & Ratings"]
+        UC7["Propose New Destination Pin"]
+        UC8["Approve / Decline Spot Proposals"]
+        UC9["User Account Management & Role Assignment"]
+        UC10["Audit Log Trail Monitoring"]
+        UC11["Database Snapshot Backup & Restore"]
+    end
+
+    Guest --> UC1
+    Guest --> UC2
+
+    Tourist --> UC1
+    Tourist --> UC2
+    Tourist --> UC3
+    Tourist --> UC4
+    Tourist --> UC5
+    Tourist --> UC6
+
+    Staff --> UC4
+    Staff --> UC7
+    Staff --> UC1
+    Staff --> UC3
+
+    Admin --> UC4
+    Admin --> UC8
+    Admin --> UC9
+    Admin --> UC10
+    Admin --> UC11
+
+    UC3 -.->|External API Call| OSRM
+    UC4 -.->|Auth & RLS| Supabase
+    UC10 -.->|Record Events| Supabase
+    UC11 -.->|Snapshot Data| Supabase`
+            },
+            swimlane: {
+                title: "2. System Flow Diagram (Swimlanes & Pools)",
+                subtitle: "Cross-functional process flow illustrating sequence of handoffs between participants",
+                badge: "Swimlane Sequence Flow",
+                desc: `<b>Participant Lanes:</b> Tourist, Tourism Staff (LGU), System Admin, ExplorePH Web Engine, OSRM Road Router, and Supabase Database.<br>
+                       <b>Flow Highlights:</b> Content proposal submissions, administrative approval workflow, GPS proximity detection, and road route geometry rendering.`,
+                code: `sequenceDiagram
+    autonumber
+    actor Tourist as 👤 Tourist
+    actor Staff as 🏛️ Tourism Staff
+    actor Admin as 🛡️ System Admin
+    participant System as 📱 ExplorePH Web
+    participant OSRM as 🛣️ OSRM Router
+    participant DB as 🗄️ Database & Logs
+
+    rect rgb(30, 30, 30)
+    note right of Staff: Phase 1: Destination Content Proposal
+    Staff->>System: Pin GPS point, input spot details, hours & fees
+    System->>DB: INSERT INTO destinations (status='pending')
+    System->>DB: INSERT INTO log_trails (action='SUBMIT_DESTINATION')
+    end
+
+    rect rgb(35, 25, 25)
+    note right of Admin: Phase 2: Administrative Review & Governance
+    Admin->>System: Review pending proposals list
+    Admin->>System: Click "Approve Spot"
+    System->>DB: UPDATE destinations SET status='approved'
+    System->>DB: INSERT INTO log_trails (action='REVIEW_DESTINATION')
+    end
+
+    rect rgb(25, 35, 30)
+    note right of Tourist: Phase 3: GPS Proximity & Road Tracing
+    Tourist->>System: Request live GPS position ("Locate Me")
+    System->>System: Calculate Haversine Distances (km) to all spots
+    Tourist->>System: Click "Trace on Map" for destination
+    System->>OSRM: GET /driving/{user_coords};{spot_coords}
+    OSRM-->>System: Return GeoJSON Road Network Coordinates
+    System->>Tourist: Render curved road polyline + ETA HUD
+    Tourist->>System: Mark spot as "Visited"
+    System->>DB: INSERT INTO spot_visits & log_trails
+    end`
+            },
+            erd: {
+                title: "3. Entity Relationship Diagram (ERD)",
+                subtitle: "Database schema entities, attributes, primary/foreign keys, and relational cardinalities",
+                badge: "Crow's Foot ERD",
+                desc: `<b>Normalized Entities:</b> USERS, DESTINATIONS, LOG_TRAILS, REVIEWS, USER_BOOKMARKS, SPOT_VISITS, and DESTINATION_ANALYTICS.<br>
+                       <b>Integrity Constraints:</b> Role-based foreign keys, unique email/username checks, progressive lockout counters, and audit log cascades.`,
+                code: `erDiagram
+    USERS ||--o{ DESTINATIONS : "submits"
+    USERS ||--o{ LOG_TRAILS : "generates"
+    USERS ||--o{ REVIEWS : "writes"
+    USERS ||--o{ USER_BOOKMARKS : "saves"
+    USERS ||--o{ SPOT_VISITS : "records"
+    DESTINATIONS ||--o{ REVIEWS : "receives"
+    DESTINATIONS ||--o{ USER_BOOKMARKS : "bookmarked_in"
+    DESTINATIONS ||--o{ SPOT_VISITS : "visited_in"
+    DESTINATIONS ||--o| DESTINATION_ANALYTICS : "tracks"
+
+    USERS {
+        bigint id PK
+        varchar full_name
+        varchar username UK
+        varchar email UK
+        varchar password
+        varchar role
+        int failed_attempts
+        timestamptz lockout_until
+        varchar otp_code
+    }
+
+    DESTINATIONS {
+        bigint id PK
+        bigint submitted_by FK
+        varchar name
+        varchar category
+        text location_address
+        double_precision latitude
+        double_precision longitude
+        numeric rating
+        varchar status
+    }
+
+    LOG_TRAILS {
+        bigint id PK
+        bigint user_id FK
+        varchar username_used
+        varchar action
+        text details
+        timestamptz created_at
+    }
+
+    REVIEWS {
+        bigint id PK
+        bigint destination_id FK
+        bigint user_id FK
+        int rating
+        text comment
+    }
+
+    USER_BOOKMARKS {
+        bigint id PK
+        bigint user_id FK
+        bigint destination_id FK
+    }
+
+    SPOT_VISITS {
+        bigint id PK
+        bigint user_id FK
+        bigint destination_id FK
+    }`
+            },
+            flowchart: {
+                title: "4. System Flowchart (Core Logic & Control Flow)",
+                subtitle: "Flowchart showing inputs, progressive lockout checks, CAPTCHA decisions, and navigation logic",
+                badge: "ANSI Standard Logic",
+                desc: `<b>Workflow Path:</b> Covers authentication validation, progressive lockout escalation (1m, 5m, 15m), security CAPTCHA injection, role-based screen routing, and OSRM turn-by-turn road calculations.`,
+                code: `flowchart TD
+    Start(["Start / Open Portal"]) --> CheckSession{"Has active session?"}
+    CheckSession -- No --> AuthChoice{"Selected Action?"}
+    AuthChoice -- "Continue as Guest" --> GuestMode["Set Guest Mode (Limited Tools)"] --> BrowseSpots["Browse Ormoc Destinations"]
+    AuthChoice -- "Sign In" --> EnterCreds[/"Enter Username & Password"/]
+
+    EnterCreds --> CheckLockout{"Is account locked?"}
+    CheckLockout -- Yes --> ShowTimer[/"Display Lockout Timer"/] --> StopAuth(["Halt Attempt"])
+    CheckLockout -- No --> CheckCaptchaReq{"Failed >= 3 attempts?"}
+
+    CheckCaptchaReq -- Yes --> ValidateCaptcha{"Verify CAPTCHA"}
+    ValidateCaptcha -- Failed --> NewCaptcha["Regenerate CAPTCHA"] --> EnterCreds
+    ValidateCaptcha -- Passed --> VerifyPass
+    CheckCaptchaReq -- No --> VerifyPass{"Validate Password"}
+
+    VerifyPass -- Incorrect --> IncFail["failed_attempts += 1"]
+    IncFail --> CheckAttempts{"failed_attempts >= 3?"}
+    CheckAttempts -- Yes --> TriggerLock["Lock account (1m/5m/15m) & Enable CAPTCHA"] --> StopAuth
+    CheckAttempts -- No --> AuditFail["Log FAILED_LOGIN"] --> EnterCreds
+
+    VerifyPass -- Correct --> ResetFails["failed_attempts = 0, lockout = null"]
+    ResetFails --> InitSession["Start 15-min Inactivity Watchdog"] --> RoleCheck{"Check User Role"}
+
+    RoleCheck -- "Admin" --> AdminDash["Display Admin Console (Approvals, SIA, Backups)"]
+    RoleCheck -- "Tourist" --> TouristDash["Display Tourist Dashboard (Watchlist, GPS Trace)"]
+    CheckSession -- Yes --> TouristDash
+
+    TouristDash --> NavAction{"Navigation Action?"}
+    NavAction -- "Locate Me" --> QueryGPS[/"Get Device GPS Coordinates"/] --> Haversine["Compute Haversine Distances (km)"] --> SortList["Sort Drawer: Nearest to Farthest"]
+    NavAction -- "Trace on Map" --> CallOSRM["Query OSRM Road Router API"] --> RoadCheck{"OSRM OK?"}
+    RoadCheck -- Yes --> DrawRoad["Draw curved road polyline + ETA HUD"]
+    RoadCheck -- No --> FallbackLine["Draw direct line trace"]`
+            },
+            network: {
+                title: "5. Network Diagram (Network Flow & Infrastructure)",
+                subtitle: "Communication paths, transport protocols, firewalls, caching layers, and external service nodes",
+                badge: "Layered Network Flow",
+                desc: `<b>Network Layers:</b> Client Tier (Mobile GPS / Desktop Workstation) &rarr; Perimeter Security & CDN (HTTPS / WSS / WAF) &rarr; Web Server (XAMPP Apache) &rarr; External Cloud Services (OSRM Road Router, Nominatim, OSM Tiles) &rarr; Managed Cloud Database (Supabase PostgreSQL / Object Storage).`,
+                code: `flowchart TD
+    subgraph ClientTier["Client Device Layer (Edge)"]
+        Mobile["📱 Mobile Smartphone (GPS Enabled)"]
+        Workstation["💻 Desktop / Admin Workstation"]
+    end
+
+    subgraph Perimeter["Perimeter Security & CDN"]
+        DNS["🌐 DNS / Cloudflare Edge CDN (DDoS Protection)"]
+        WAF["🛡️ Web Application Firewall & SSL Termination"]
+    end
+
+    subgraph WebServerTier["Application Hosting Tier"]
+        Apache["🖥️ Web Server (XAMPP Apache / Nginx Engine)"]
+        StaticEngine["📦 Single Page App (ExplorePH HTML5, Tailwind, Leaflet)"]
+    end
+
+    subgraph ExternalServices["External Geospatial Cloud Engines"]
+        OSRM["🛣️ OpenStreetMap OSRM Driving Engine (router.project-osrm.org)"]
+        OSMTiles["🗺️ OpenStreetMap Tile Servers ({s}.tile.openstreetmap.org)"]
+        Nominatim["📍 Nominatim Reverse Geocoder API"]
+    end
+
+    subgraph DataTier["Managed Cloud Database Tier (Supabase)"]
+        API_GW["🚪 PostgREST / GoTrue Auth Gateway (Port 443 HTTPS)"]
+        PG_DB[("🐘 PostgreSQL Distributed Database (Tables, Keys, RLS)")]
+        Storage[("🗄️ Supabase Object Storage (Photos Bucket)")]
+    end
+
+    Mobile -->|HTTPS / TLS 1.3 (Port 443)| DNS
+    Workstation -->|HTTPS / TLS 1.3 (Port 443)| DNS
+    DNS --> WAF
+    WAF --> Apache
+    Apache --> StaticEngine
+
+    StaticEngine -->|HTTPS Tile Requests (Port 443)| OSMTiles
+    StaticEngine -->|Turn-by-Turn Road Route Requests| OSRM
+    StaticEngine -->|Reverse Coordinate Geocoding| Nominatim
+
+    StaticEngine -->|RESTful CRUD & Auth (JWT Bearer Token)| API_GW
+    API_GW -->|Connection Pool (PgBouncer)| PG_DB
+    API_GW -->|Public CDN URL Fetch| Storage`
+            }
+        };
+
+        function switchSiaSubtab(subtabKey) {
+            currentSiaSubtab = subtabKey;
+
+            // Highlight subtab buttons
+            document.querySelectorAll('.sia-subtab-btn').forEach(btn => {
+                btn.classList.remove('bg-netflixRed', 'text-white', 'shadow');
+                btn.classList.add('text-zinc-400');
+            });
+
+            const activeBtn = document.getElementById(`sia-tab-subtab-${subtabKey}`) || document.getElementById(`sia-tab-${subtabKey}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-zinc-400');
+                activeBtn.classList.add('bg-netflixRed', 'text-white', 'shadow');
+            }
+
+            renderSiaDiagram(subtabKey);
+        }
+
+        async function renderSiaDiagram(key) {
+            initSiaPanZoomListeners();
+            resetSiaZoomPan();
+
+            const def = SIA_DIAGRAM_DEFINITIONS[key] || SIA_DIAGRAM_DEFINITIONS['usecase'];
+            
+            document.getElementById('sia-diagram-title').innerText = def.title;
+            document.getElementById('sia-diagram-subtitle').innerText = def.subtitle;
+            document.getElementById('sia-badge-format').innerText = def.badge;
+            document.getElementById('sia-diagram-desc').innerHTML = def.desc;
+
+            const renderContainer = document.getElementById('sia-mermaid-render');
+            renderContainer.innerHTML = `<div class="text-xs text-zinc-400 py-8 animate-pulse flex items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin text-netflixRed"></i> Rendering architecture diagram...</div>`;
+            lucide.createIcons();
+
+            try {
+                if (window.mermaid) {
+                    const uniqueId = `mermaid-svg-${Date.now()}`;
+                    const { svg } = await mermaid.render(uniqueId, def.code);
+                    renderContainer.innerHTML = svg;
+                } else {
+                    renderContainer.innerHTML = `<pre class="text-[10px] text-zinc-300 font-mono text-left p-3 overflow-x-auto">${def.code}</pre>`;
+                }
+            } catch (err) {
+                console.error("Mermaid render error:", err);
+                renderContainer.innerHTML = `<pre class="text-[10px] text-zinc-300 font-mono text-left p-3 overflow-x-auto">${def.code}</pre>`;
+            }
         }
 
         // HAVERSINE DISTANCE FORMULA (Calculates km between two GPS coordinates)
@@ -2151,6 +2655,11 @@
             renderMapMarkers();
             leafletMap.invalidateSize();
             updateNearbySpotsDrawer();
+
+            // Auto-locate real device GPS when opening map if not yet located
+            if (!userCurrentLocation && navigator.geolocation) {
+                locateUserGps(false);
+            }
         }
 
         function renderMapMarkers() {
@@ -2193,10 +2702,10 @@
             });
         }
 
-        // LIVE GPS LOCATION TRACKER
-        function locateUserGps() {
+        // LIVE DEVICE GPS LOCATION TRACKER & CONTINUOUS WATCHDOG
+        function locateUserGps(showFeedback = true) {
             if (!navigator.geolocation) {
-                showToast('error', 'Geolocation is not supported by your browser.');
+                showToast('error', 'Geolocation is not supported by your device or browser.');
                 return;
             }
 
@@ -2205,55 +2714,120 @@
             const coordsBadge = document.getElementById('gps-coords-badge');
             const locateBtn = document.getElementById('gps-btn-text');
 
-            banner.classList.remove('hidden');
-            statusText.innerText = "Accessing device GPS sensors...";
-            locateBtn.innerText = "Locating...";
+            if (banner) banner.classList.remove('hidden');
+            if (statusText) statusText.innerText = "Querying device hardware GPS...";
+            if (locateBtn) locateBtn.innerText = "Locating...";
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
-
-                    userCurrentLocation = { lat, lng };
-
-                    statusText.innerText = `GPS Located! Accuracy: ±${Math.round(accuracy)}m`;
-                    coordsBadge.innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                    locateBtn.innerText = "Re-center Me";
-
-                    updateUserLocationMarker(lat, lng, accuracy);
-                    renderMapMarkers();
-                    updateNearbySpotsDrawer();
-
-                    if (selectedFocusSpot) {
-                        drawTraceRoute(userCurrentLocation, { lat: selectedFocusSpot.latitude, lng: selectedFocusSpot.longitude }, selectedFocusSpot.name);
-                    } else {
-                        leafletMap.setView([lat, lng], 14);
-                    }
-
-                    showToast('success', `GPS Position Found (${lat.toFixed(3)}, ${lng.toFixed(3)})`);
-                    if (currentUser) {
-                        logTrail(currentUser.id, currentUser.username, "GPS_LOCATION_LOCATED", `User located at ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                    }
+                    handleDeviceGpsSuccess(position, showFeedback);
                 },
                 (err) => {
-                    // Fallback to Ormoc City Hall / Downtown if GPS permission denied or unavailable
-                    const fallbackLat = 11.0064;
-                    const fallbackLng = 124.6075;
-                    userCurrentLocation = { lat: fallbackLat, lng: fallbackLng };
-
-                    statusText.innerText = "Using Ormoc City Center (GPS simulated)";
-                    coordsBadge.innerText = `${fallbackLat.toFixed(4)}, ${fallbackLng.toFixed(4)}`;
-                    locateBtn.innerText = "Locate Me";
-
-                    updateUserLocationMarker(fallbackLat, fallbackLng, 50);
-                    renderMapMarkers();
-                    updateNearbySpotsDrawer();
-                    leafletMap.setView([fallbackLat, fallbackLng], 13);
-                    showToast('info', 'GPS permission denied or unavailable. Centered at Ormoc Downtown.');
+                    handleDeviceGpsError(err);
                 },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
+        }
+
+        function handleDeviceGpsSuccess(position, showFeedback = true) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy || 10;
+
+            userCurrentLocation = { lat, lng };
+
+            const banner = document.getElementById('gps-status-banner');
+            const statusText = document.getElementById('gps-status-text');
+            const coordsBadge = document.getElementById('gps-coords-badge');
+            const locateBtn = document.getElementById('gps-btn-text');
+
+            if (banner) banner.classList.remove('hidden');
+            if (statusText) statusText.innerText = `Device GPS Active (±${Math.round(accuracy)}m)`;
+            if (coordsBadge) coordsBadge.innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            if (locateBtn) locateBtn.innerText = "Re-center GPS";
+
+            updateUserLocationMarker(lat, lng, accuracy);
+            renderMapMarkers();
+            updateNearbySpotsDrawer();
+
+            if (selectedFocusSpot) {
+                drawTraceRoute(userCurrentLocation, { lat: selectedFocusSpot.latitude, lng: selectedFocusSpot.longitude }, selectedFocusSpot.name);
+            } else if (leafletMap) {
+                leafletMap.setView([lat, lng], 14);
+            }
+
+            if (showFeedback) {
+                showToast('success', `Live Device GPS Locked (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            }
+
+            if (currentUser) {
+                logTrail(currentUser.id, currentUser.username, "DEVICE_GPS_LOCATED", `Real device GPS coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracy)}m)`);
+            }
+        }
+
+        function handleDeviceGpsError(err) {
+            let errorMsg = "GPS unavailable.";
+            if (err.code === 1) {
+                errorMsg = "Location permission denied. Please allow location access in your browser settings.";
+            } else if (err.code === 2) {
+                errorMsg = "GPS position unavailable. Please enable Device Location/GPS.";
+            } else if (err.code === 3) {
+                errorMsg = "GPS request timed out. Retrying with network location...";
+            }
+
+            const banner = document.getElementById('gps-status-banner');
+            const statusText = document.getElementById('gps-status-text');
+            const coordsBadge = document.getElementById('gps-coords-badge');
+            const locateBtn = document.getElementById('gps-btn-text');
+
+            // Fallback: If device GPS permission is blocked, fall back to Ormoc City Hall
+            const fallbackLat = 11.0064;
+            const fallbackLng = 124.6075;
+            userCurrentLocation = { lat: fallbackLat, lng: fallbackLng };
+
+            if (statusText) statusText.innerText = "GPS blocked/unavailable (Ormoc Center Fallback)";
+            if (coordsBadge) coordsBadge.innerText = `${fallbackLat.toFixed(4)}, ${fallbackLng.toFixed(4)}`;
+            if (locateBtn) locateBtn.innerText = "Locate Device GPS";
+
+            updateUserLocationMarker(fallbackLat, fallbackLng, 50);
+            renderMapMarkers();
+            updateNearbySpotsDrawer();
+            if (leafletMap) leafletMap.setView([fallbackLat, fallbackLng], 13);
+            showToast('error', errorMsg);
+        }
+
+        // CONTINUOUS GPS LIVE TRACKING (Follows your device as you move)
+        function toggleContinuousGpsTracking() {
+            const trackText = document.getElementById('gps-track-text');
+            const trackIcon = document.getElementById('gps-track-icon');
+
+            if (gpsWatchId !== null) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+                if (trackText) trackText.innerText = "Live Track";
+                if (trackIcon) {
+                    trackIcon.classList.remove('text-emerald-400', 'animate-pulse');
+                    trackIcon.classList.add('text-zinc-400');
+                }
+                showToast('info', 'Continuous GPS tracking paused.');
+            } else {
+                if (!navigator.geolocation) {
+                    showToast('error', 'Geolocation is not supported by your device.');
+                    return;
+                }
+                locateUserGps(true);
+                gpsWatchId = navigator.geolocation.watchPosition(
+                    (pos) => handleDeviceGpsSuccess(pos, false),
+                    (err) => console.warn('WatchPosition error', err),
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+                );
+                if (trackText) trackText.innerText = "Tracking On";
+                if (trackIcon) {
+                    trackIcon.classList.remove('text-zinc-400');
+                    trackIcon.classList.add('text-emerald-400', 'animate-pulse');
+                }
+                showToast('success', 'Live Device GPS Tracking started!');
+            }
         }
 
         function updateUserLocationMarker(lat, lng, accuracy) {
@@ -2338,7 +2912,21 @@
                     document.getElementById('btn-clear-trace').classList.remove('hidden');
                     leafletMap.fitBounds(tracePolyline.getBounds(), { padding: [40, 40] });
 
+                    // Update HUD banner
+                    const hud = document.getElementById('route-hud-banner');
+                    if (hud) {
+                        hud.classList.remove('hidden');
+                        document.getElementById('hud-dest-name').innerText = spotName;
+                        document.getElementById('hud-dest-dist').innerText = `${roadKm} km`;
+                        document.getElementById('hud-dest-time').innerText = `~${roadDurationMin} mins drive`;
+                        const gmapsBtn = document.getElementById('btn-open-google-maps');
+                        if (gmapsBtn) {
+                            gmapsBtn.href = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`;
+                        }
+                    }
+
                     showToast('success', `Road trace: ${roadKm} km via Ormoc roads (~${roadDurationMin} mins)`);
+                    lucide.createIcons();
                     return;
                 }
             } catch (err) {
@@ -2356,6 +2944,19 @@
 
             document.getElementById('btn-clear-trace').classList.remove('hidden');
 
+            // Update HUD banner with straight line estimate
+            const hud = document.getElementById('route-hud-banner');
+            if (hud) {
+                hud.classList.remove('hidden');
+                document.getElementById('hud-dest-name').innerText = spotName;
+                document.getElementById('hud-dest-dist').innerText = `${displayKm.toFixed(1)} km`;
+                document.getElementById('hud-dest-time').innerText = `Direct line trace`;
+                const gmapsBtn = document.getElementById('btn-open-google-maps');
+                if (gmapsBtn) {
+                    gmapsBtn.href = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`;
+                }
+            }
+
             const group = new L.featureGroup([
                 L.marker([origin.lat, origin.lng]),
                 L.marker([destination.lat, destination.lng])
@@ -2363,6 +2964,7 @@
             leafletMap.fitBounds(group.getBounds().pad(0.2));
 
             showToast('info', `Route traced to ${spotName} (${displayKm.toFixed(1)} km)`);
+            lucide.createIcons();
         }
 
         function clearLiveTraceRoute() {
@@ -2371,6 +2973,8 @@
                 tracePolyline = null;
             }
             document.getElementById('btn-clear-trace').classList.add('hidden');
+            const hud = document.getElementById('route-hud-banner');
+            if (hud) hud.classList.add('hidden');
             selectedFocusSpot = null;
             updateNearbySpotsDrawer();
             showToast('info', 'Trace route cleared.');
