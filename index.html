@@ -35,21 +35,62 @@
     <script>
         mermaid.initialize({
             startOnLoad: false,
+            suppressErrorRendering: true,
             theme: 'dark',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: false,
+                htmlLabels: false,
+                curve: 'basis'
+            },
+            sequence: {
+                useMaxWidth: false,
+                showSequenceNumbers: true,
+                actorFontSize: 13,
+                messageFontSize: 12
+            },
+            er: {
+                useMaxWidth: false,
+                entityPadding: 15
+            },
             themeVariables: {
                 darkMode: true,
                 background: '#141414',
-                primaryColor: '#E50914',
+                mainBkg: '#181818',
+                primaryColor: '#222222',
                 primaryTextColor: '#ffffff',
-                primaryBorderColor: '#B81D24',
+                primaryBorderColor: '#E50914',
                 lineColor: '#E50914',
-                secondaryColor: '#2F2F2F',
-                tertiaryColor: '#181818'
+                secondaryColor: '#27272a',
+                tertiaryColor: '#18181b',
+                fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif',
+                fontSize: '13px'
             }
         });
     </script>
 
     <style>
+        /* Clean and suppress any Mermaid error popups or bomb icons */
+        body > div[id^="dmermaid"], body > .error-icon, body > svg[id^="dmermaid"], [id^="dmermaid"], .mermaid .error-icon, .error-text { display: none !important; }
+        #sia-mermaid-render {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+        #sia-mermaid-render svg {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 950px !important;
+            max-height: 480px !important;
+            object-fit: contain !important;
+            filter: drop-shadow(0 10px 25px rgba(0,0,0,0.5));
+        }
+        #sia-mermaid-render svg text {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            font-size: 13px !important;
+        }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -535,8 +576,8 @@
                                 </div>
 
                                 <!-- INTERACTIVE DIAGRAM RENDER AREA (PAN & ZOOM CAPABLE) -->
-                                <div id="sia-diagram-container" class="w-full relative overflow-hidden bg-zinc-950/90 rounded-xl border border-zinc-900 h-[460px] flex items-center justify-center select-none cursor-grab active:cursor-grabbing">
-                                    <div id="sia-mermaid-render" class="w-full h-full flex items-center justify-center transition-transform duration-75 origin-center"></div>
+                                <div id="sia-diagram-container" class="w-full relative overflow-hidden bg-zinc-950/90 rounded-xl border border-zinc-900 h-[520px] flex items-center justify-center select-none cursor-grab active:cursor-grabbing">
+                                    <div id="sia-mermaid-render" class="w-full h-full flex items-center justify-center transition-transform duration-75 origin-center p-4"></div>
 
                                     <!-- INTERACTIVE HINT BADGE (As shown in user design reference) -->
                                     <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none bg-black/85 backdrop-blur-md border border-zinc-700/60 rounded-full px-3 py-1 shadow-2xl flex items-center gap-1.5 text-[10px] text-zinc-300 font-medium">
@@ -2285,6 +2326,7 @@
             if (!container) return;
             siaPanInitialized = true;
 
+            // Mouse drag listeners
             container.addEventListener('mousedown', (e) => {
                 isSiaPanning = true;
                 siaPanStartX = e.clientX - siaPanX;
@@ -2301,6 +2343,47 @@
             window.addEventListener('mouseup', () => {
                 isSiaPanning = false;
             });
+
+            // Touch events for mobile pan and pinch-to-zoom
+            let touchStartDist = 0;
+            let touchStartScale = 1;
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isSiaPanning = true;
+                    siaPanStartX = e.touches[0].clientX - siaPanX;
+                    siaPanStartY = e.touches[0].clientY - siaPanY;
+                } else if (e.touches.length === 2) {
+                    isSiaPanning = false;
+                    touchStartDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    touchStartScale = siaZoomScale;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isSiaPanning) {
+                    siaPanX = e.touches[0].clientX - siaPanStartX;
+                    siaPanY = e.touches[0].clientY - siaPanStartY;
+                    applySiaTransform();
+                } else if (e.touches.length === 2 && touchStartDist > 0) {
+                    const currentDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const factor = currentDist / touchStartDist;
+                    siaZoomScale = Math.min(Math.max(0.35, touchStartScale * factor), 3.0);
+                    applySiaTransform();
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    isSiaPanning = false;
+                    touchStartDist = 0;
+                }
+            }, { passive: true });
 
             container.addEventListener('wheel', (e) => {
                 e.preventDefault();
@@ -2335,17 +2418,17 @@
                 badge: "Standard UML Notation",
                 desc: `<b>Actors:</b> Tourist (Primary), Tourism Staff (Contributor), Admin (Governance), Guest (Public), and External Systems (OSRM Router, Supabase BaaS).<br>
                        <b>Key Boundaries:</b> Distinguishes public browsing from authenticated security flows, proposal moderation, GPS road tracing, and database snapshots.`,
-                code: `flowchart LR
+                code: `graph LR
     subgraph Actors["System Actors"]
-        Guest["👤 Guest Traveler"]
-        Tourist["👤 Registered Tourist"]
-        Staff["👤 Tourism Staff"]
-        Admin["👤 System Administrator"]
-        OSRM["🌐 OSRM / OpenStreetMap"]
-        Supabase["☁️ Supabase Cloud DB"]
+        Guest["Guest Traveler"]
+        Tourist["Registered Tourist"]
+        Staff["Tourism Staff"]
+        Admin["System Administrator"]
+        OSRM["OSRM OpenStreetMap Engine"]
+        Supabase["Supabase Cloud Database"]
     end
 
-    subgraph Portal["ExplorePH: Ormoc Tourism Portal"]
+    subgraph Portal["ExplorePH Ormoc Tourism Portal"]
         UC1["Explore Spots & Filter Categories"]
         UC2["Live GPS Locate & Haversine Distance Calc"]
         UC3["Turn-by-Turn Road Route Tracing"]
@@ -2353,7 +2436,7 @@
         UC5["Manage Watchlist (Bookmarks & Visited Spots)"]
         UC6["Submit Reviews & Ratings"]
         UC7["Propose New Destination Pin"]
-        UC8["Approve / Decline Spot Proposals"]
+        UC8["Approve or Decline Spot Proposals"]
         UC9["User Account Management & Role Assignment"]
         UC10["Audit Log Trail Monitoring"]
         UC11["Database Snapshot Backup & Restore"]
@@ -2380,10 +2463,10 @@
     Admin --> UC10
     Admin --> UC11
 
-    UC3 -.->|External API Call| OSRM
-    UC4 -.->|Auth & RLS| Supabase
-    UC10 -.->|Record Events| Supabase
-    UC11 -.->|Snapshot Data| Supabase`
+    UC3 --> OSRM
+    UC4 --> Supabase
+    UC10 --> Supabase
+    UC11 --> Supabase`
             },
             swimlane: {
                 title: "2. System Flow Diagram (Swimlanes & Pools)",
@@ -2393,16 +2476,16 @@
                        <b>Flow Highlights:</b> Content proposal submissions, administrative approval workflow, GPS proximity detection, and road route geometry rendering.`,
                 code: `sequenceDiagram
     autonumber
-    actor Tourist as 👤 Tourist
-    actor Staff as 🏛️ Tourism Staff
-    actor Admin as 🛡️ System Admin
-    participant System as 📱 ExplorePH Web
-    participant OSRM as 🛣️ OSRM Router
-    participant DB as 🗄️ Database & Logs
+    actor Tourist as Tourist
+    actor Staff as Tourism Staff
+    actor Admin as System Admin
+    participant System as ExplorePH Web
+    participant OSRM as OSRM Router
+    participant DB as Database and Logs
 
     rect rgb(30, 30, 30)
     note right of Staff: Phase 1: Destination Content Proposal
-    Staff->>System: Pin GPS point, input spot details, hours & fees
+    Staff->>System: Pin GPS point, input spot details, hours and fees
     System->>DB: INSERT INTO destinations (status='pending')
     System->>DB: INSERT INTO log_trails (action='SUBMIT_DESTINATION')
     end
@@ -2420,11 +2503,11 @@
     Tourist->>System: Request live GPS position ("Locate Me")
     System->>System: Calculate Haversine Distances (km) to all spots
     Tourist->>System: Click "Trace on Map" for destination
-    System->>OSRM: GET /driving/{user_coords};{spot_coords}
+    System->>OSRM: Request driving route from user coordinates to spot
     OSRM-->>System: Return GeoJSON Road Network Coordinates
-    System->>Tourist: Render curved road polyline + ETA HUD
+    System->>Tourist: Render curved road polyline and ETA HUD
     Tourist->>System: Mark spot as "Visited"
-    System->>DB: INSERT INTO spot_visits & log_trails
+    System->>DB: INSERT INTO spot_visits and log_trails
     end`
             },
             erd: {
@@ -2446,35 +2529,34 @@
 
     USERS {
         bigint id PK
-        varchar full_name
-        varchar username UK
-        varchar email UK
-        varchar password
-        varchar role
+        string full_name
+        string username
+        string email
+        string role
         int failed_attempts
-        timestamptz lockout_until
-        varchar otp_code
+        string lockout_until
+        string otp_code
     }
 
     DESTINATIONS {
         bigint id PK
         bigint submitted_by FK
-        varchar name
-        varchar category
-        text location_address
-        double_precision latitude
-        double_precision longitude
-        numeric rating
-        varchar status
+        string name
+        string category
+        string location_address
+        float latitude
+        float longitude
+        float rating
+        string status
     }
 
     LOG_TRAILS {
         bigint id PK
         bigint user_id FK
-        varchar username_used
-        varchar action
-        text details
-        timestamptz created_at
+        string username_used
+        string action
+        string details
+        string created_at
     }
 
     REVIEWS {
@@ -2482,7 +2564,7 @@
         bigint destination_id FK
         bigint user_id FK
         int rating
-        text comment
+        string comment
     }
 
     USER_BOOKMARKS {
@@ -2495,6 +2577,13 @@
         bigint id PK
         bigint user_id FK
         bigint destination_id FK
+    }
+
+    DESTINATION_ANALYTICS {
+        bigint id PK
+        bigint destination_id FK
+        int repeat_visitors
+        float return_rate_pct
     }`
             },
             flowchart: {
@@ -2502,84 +2591,93 @@
                 subtitle: "Flowchart showing inputs, progressive lockout checks, CAPTCHA decisions, and navigation logic",
                 badge: "ANSI Standard Logic",
                 desc: `<b>Workflow Path:</b> Covers authentication validation, progressive lockout escalation (1m, 5m, 15m), security CAPTCHA injection, role-based screen routing, and OSRM turn-by-turn road calculations.`,
-                code: `flowchart TD
-    Start(["Start / Open Portal"]) --> CheckSession{"Has active session?"}
-    CheckSession -- No --> AuthChoice{"Selected Action?"}
-    AuthChoice -- "Continue as Guest" --> GuestMode["Set Guest Mode (Limited Tools)"] --> BrowseSpots["Browse Ormoc Destinations"]
-    AuthChoice -- "Sign In" --> EnterCreds[/"Enter Username & Password"/]
+                code: `graph TD
+    Start["Start / Open Portal"] --> CheckSession{"Has active session?"}
+    CheckSession -->|No| AuthChoice{"Selected Action?"}
+    AuthChoice -->|Continue as Guest| GuestMode["Set Guest Mode (Limited Tools)"]
+    GuestMode --> BrowseSpots["Browse Ormoc Destinations"]
+    AuthChoice -->|Sign In| EnterCreds["Enter Username & Password"]
 
     EnterCreds --> CheckLockout{"Is account locked?"}
-    CheckLockout -- Yes --> ShowTimer[/"Display Lockout Timer"/] --> StopAuth(["Halt Attempt"])
-    CheckLockout -- No --> CheckCaptchaReq{"Failed >= 3 attempts?"}
+    CheckLockout -->|Yes| ShowTimer["Display Lockout Timer"]
+    ShowTimer --> StopAuth["Halt Attempt"]
+    CheckLockout -->|No| CheckCaptchaReq{"Failed >= 3 attempts?"}
 
-    CheckCaptchaReq -- Yes --> ValidateCaptcha{"Verify CAPTCHA"}
-    ValidateCaptcha -- Failed --> NewCaptcha["Regenerate CAPTCHA"] --> EnterCreds
-    ValidateCaptcha -- Passed --> VerifyPass
-    CheckCaptchaReq -- No --> VerifyPass{"Validate Password"}
+    CheckCaptchaReq -->|Yes| ValidateCaptcha{"Verify CAPTCHA"}
+    ValidateCaptcha -->|Failed| NewCaptcha["Regenerate CAPTCHA"]
+    NewCaptcha --> EnterCreds
+    ValidateCaptcha -->|Passed| VerifyPass{"Validate Password"}
+    CheckCaptchaReq -->|No| VerifyPass
 
-    VerifyPass -- Incorrect --> IncFail["failed_attempts += 1"]
+    VerifyPass -->|Incorrect| IncFail["failed_attempts += 1"]
     IncFail --> CheckAttempts{"failed_attempts >= 3?"}
-    CheckAttempts -- Yes --> TriggerLock["Lock account (1m/5m/15m) & Enable CAPTCHA"] --> StopAuth
-    CheckAttempts -- No --> AuditFail["Log FAILED_LOGIN"] --> EnterCreds
+    CheckAttempts -->|Yes| TriggerLock["Lock account (1m/5m/15m) & Enable CAPTCHA"]
+    TriggerLock --> StopAuth
+    CheckAttempts -->|No| AuditFail["Log FAILED_LOGIN"]
+    AuditFail --> EnterCreds
 
-    VerifyPass -- Correct --> ResetFails["failed_attempts = 0, lockout = null"]
-    ResetFails --> InitSession["Start 15-min Inactivity Watchdog"] --> RoleCheck{"Check User Role"}
+    VerifyPass -->|Correct| ResetFails["failed_attempts = 0, lockout = null"]
+    ResetFails --> InitSession["Start 15-min Inactivity Watchdog"]
+    InitSession --> RoleCheck{"Check User Role"}
 
-    RoleCheck -- "Admin" --> AdminDash["Display Admin Console (Approvals, SIA, Backups)"]
-    RoleCheck -- "Tourist" --> TouristDash["Display Tourist Dashboard (Watchlist, GPS Trace)"]
-    CheckSession -- Yes --> TouristDash
+    RoleCheck -->|Admin| AdminDash["Display Admin Console (Approvals, SIA, Backups)"]
+    RoleCheck -->|Tourist| TouristDash["Display Tourist Dashboard (Watchlist, GPS Trace)"]
+    CheckSession -->|Yes| TouristDash
 
     TouristDash --> NavAction{"Navigation Action?"}
-    NavAction -- "Locate Me" --> QueryGPS[/"Get Device GPS Coordinates"/] --> Haversine["Compute Haversine Distances (km)"] --> SortList["Sort Drawer: Nearest to Farthest"]
-    NavAction -- "Trace on Map" --> CallOSRM["Query OSRM Road Router API"] --> RoadCheck{"OSRM OK?"}
-    RoadCheck -- Yes --> DrawRoad["Draw curved road polyline + ETA HUD"]
-    RoadCheck -- No --> FallbackLine["Draw direct line trace"]`
+    NavAction -->|Locate Me| QueryGPS["Get Device GPS Coordinates"]
+    QueryGPS --> Haversine["Compute Haversine Distances (km)"]
+    Haversine --> SortList["Sort Drawer: Nearest to Farthest"]
+    NavAction -->|Trace on Map| CallOSRM["Query OSRM Road Router API"]
+    CallOSRM --> RoadCheck{"OSRM OK?"}
+    RoadCheck -->|Yes| DrawRoad["Draw curved road polyline + ETA HUD"]
+    RoadCheck -->|No| FallbackLine["Draw direct line trace"]`
             },
             network: {
                 title: "5. Network Diagram (Network Flow & Infrastructure)",
                 subtitle: "Communication paths, transport protocols, firewalls, caching layers, and external service nodes",
                 badge: "Layered Network Flow",
                 desc: `<b>Network Layers:</b> Client Tier (Mobile GPS / Desktop Workstation) &rarr; Perimeter Security & CDN (HTTPS / WSS / WAF) &rarr; Web Server (XAMPP Apache) &rarr; External Cloud Services (OSRM Road Router, Nominatim, OSM Tiles) &rarr; Managed Cloud Database (Supabase PostgreSQL / Object Storage).`,
-                code: `flowchart TD
+                code: `graph TD
     subgraph ClientTier["Client Device Layer (Edge)"]
-        Mobile["📱 Mobile Smartphone (GPS Enabled)"]
-        Workstation["💻 Desktop / Admin Workstation"]
+        Mobile["Mobile Smartphone (GPS Enabled)"]
+        Workstation["Desktop / Admin Workstation"]
     end
 
     subgraph Perimeter["Perimeter Security & CDN"]
-        DNS["🌐 DNS / Cloudflare Edge CDN (DDoS Protection)"]
-        WAF["🛡️ Web Application Firewall & SSL Termination"]
+        DNS["DNS / Cloudflare Edge CDN (DDoS Protection)"]
+        WAF["Web Application Firewall & SSL Termination"]
     end
 
     subgraph WebServerTier["Application Hosting Tier"]
-        Apache["🖥️ Web Server (XAMPP Apache / Nginx Engine)"]
-        StaticEngine["📦 Single Page App (ExplorePH HTML5, Tailwind, Leaflet)"]
+        Apache["Web Server (XAMPP Apache / Nginx Engine)"]
+        StaticEngine["Single Page App (ExplorePH HTML5, Tailwind, Leaflet)"]
     end
 
     subgraph ExternalServices["External Geospatial Cloud Engines"]
-        OSRM["🛣️ OpenStreetMap OSRM Driving Engine (router.project-osrm.org)"]
-        OSMTiles["🗺️ OpenStreetMap Tile Servers ({s}.tile.openstreetmap.org)"]
-        Nominatim["📍 Nominatim Reverse Geocoder API"]
+        OSRM["OpenStreetMap OSRM Driving Engine"]
+        OSMTiles["OpenStreetMap Tile CDN"]
+        Nominatim["Nominatim Reverse Geocoder API"]
     end
 
     subgraph DataTier["Managed Cloud Database Tier (Supabase)"]
-        API_GW["🚪 PostgREST / GoTrue Auth Gateway (Port 443 HTTPS)"]
-        PG_DB[("🐘 PostgreSQL Distributed Database (Tables, Keys, RLS)")]
-        Storage[("🗄️ Supabase Object Storage (Photos Bucket)")]
+        API_GW["PostgREST / GoTrue Auth Gateway (Port 443 HTTPS)"]
+        PG_DB[("PostgreSQL Distributed Database (Tables, Keys, RLS)")]
+        Storage[("Supabase Object Storage (Photos Bucket)")]
     end
 
-    Mobile -->|HTTPS / TLS 1.3 (Port 443)| DNS
-    Workstation -->|HTTPS / TLS 1.3 (Port 443)| DNS
+    Mobile -->|HTTPS / TLS 1.3 Port 443| DNS
+    Workstation -->|HTTPS / TLS 1.3 Port 443| DNS
     DNS --> WAF
     WAF --> Apache
     Apache --> StaticEngine
 
-    StaticEngine -->|HTTPS Tile Requests (Port 443)| OSMTiles
+    StaticEngine -->|HTTPS Tile Requests Port 443| OSMTiles
     StaticEngine -->|Turn-by-Turn Road Route Requests| OSRM
     StaticEngine -->|Reverse Coordinate Geocoding| Nominatim
 
-    StaticEngine -->|RESTful CRUD & Auth (JWT Bearer Token)| API_GW
-    API_GW -->|Connection Pool (PgBouncer)| PG_DB
+    StaticEngine -->|RESTful CRUD & Auth JWT| API_GW
+    API_GW -->|Connection Pool PgBouncer| PG_DB
     API_GW -->|Public CDN URL Fetch| Storage`
             }
         };
@@ -2602,6 +2700,604 @@
             renderSiaDiagram(subtabKey);
         }
 
+        function getDirectSiaSvg(key) {
+            switch (key) {
+                case 'usecase':
+                    return `
+<svg viewBox="0 0 920 460" class="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sia-grad-red" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#E50914"/><stop offset="100%" stop-color="#990000"/></linearGradient>
+    <linearGradient id="sia-grad-dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1f1f23"/><stop offset="100%" stop-color="#121214"/></linearGradient>
+    <linearGradient id="sia-grad-box" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27272a"/><stop offset="100%" stop-color="#18181b"/></linearGradient>
+    <filter id="sia-glow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#E50914" flood-opacity="0.3"/></filter>
+    <marker id="sia-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#E50914"/>
+    </marker>
+    <marker id="sia-arrow-zinc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#71717a"/>
+    </marker>
+  </defs>
+
+  <!-- BACKGROUND BOUNDARIES -->
+  <!-- Left Boundary: Actors -->
+  <rect x="20" y="20" width="220" height="420" rx="16" fill="#141414" stroke="#27272a" stroke-width="1.5" />
+  <rect x="20" y="20" width="220" height="36" rx="16" fill="#1f1f23" />
+  <rect x="20" y="44" width="220" height="12" fill="#1f1f23" />
+  <text x="130" y="43" text-anchor="middle" fill="#E50914" font-weight="bold" font-size="12" letter-spacing="1">SYSTEM ACTORS</text>
+
+  <!-- Right Boundary: External Cloud Services -->
+  <rect x="680" y="20" width="220" height="420" rx="16" fill="#141414" stroke="#27272a" stroke-width="1.5" />
+  <rect x="680" y="20" width="220" height="36" rx="16" fill="#1f1f23" />
+  <rect x="680" y="44" width="220" height="12" fill="#1f1f23" />
+  <text x="790" y="43" text-anchor="middle" fill="#E50914" font-weight="bold" font-size="12" letter-spacing="1">EXTERNAL CLOUD ENGINES</text>
+
+  <!-- Center Boundary: ExplorePH Portal System -->
+  <rect x="260" y="20" width="400" height="420" rx="18" fill="#18181b" stroke="#E50914" stroke-width="2" stroke-opacity="0.8" filter="url(#sia-glow)" />
+  <rect x="260" y="20" width="400" height="38" rx="18" fill="url(#sia-grad-red)" />
+  <rect x="260" y="46" width="400" height="12" fill="#E50914" />
+  <text x="460" y="44" text-anchor="middle" fill="#ffffff" font-weight="bold" font-size="13" letter-spacing="1">EXPLOREPH: ORMOC TOURISM ACCESS PORTAL</text>
+
+  <!-- ACTORS (LEFT) -->
+  <g transform="translate(35, 75)">
+    <rect width="190" height="50" rx="10" fill="url(#sia-grad-box)" stroke="#3f3f46" stroke-width="1"/>
+    <text x="15" y="25" fill="#f43f5e" font-size="15">👤</text>
+    <text x="42" y="24" fill="#ffffff" font-size="12" font-weight="bold">Guest Traveler</text>
+    <text x="42" y="40" fill="#a1a1aa" font-size="10">Public browsing &amp; distance view</text>
+  </g>
+  <g transform="translate(35, 140)">
+    <rect width="190" height="50" rx="10" fill="url(#sia-grad-box)" stroke="#3f3f46" stroke-width="1"/>
+    <text x="15" y="25" fill="#3b82f6" font-size="15">👤</text>
+    <text x="42" y="24" fill="#ffffff" font-size="12" font-weight="bold">Registered Tourist</text>
+    <text x="42" y="40" fill="#a1a1aa" font-size="10">Watchlist, GPS Trace, Reviews</text>
+  </g>
+  <g transform="translate(35, 205)">
+    <rect width="190" height="50" rx="10" fill="url(#sia-grad-box)" stroke="#3f3f46" stroke-width="1"/>
+    <text x="15" y="25" fill="#10b981" font-size="15">🏛️</text>
+    <text x="42" y="24" fill="#ffffff" font-size="12" font-weight="bold">Tourism Staff (LGU)</text>
+    <text x="42" y="40" fill="#a1a1aa" font-size="10">Destination proposals &amp; pins</text>
+  </g>
+  <g transform="translate(35, 270)">
+    <rect width="190" height="50" rx="10" fill="url(#sia-grad-box)" stroke="#3f3f46" stroke-width="1"/>
+    <text x="15" y="25" fill="#f59e0b" font-size="15">🛡️</text>
+    <text x="42" y="24" fill="#ffffff" font-size="12" font-weight="bold">System Administrator</text>
+    <text x="42" y="40" fill="#a1a1aa" font-size="10">Audits, Approvals, Backups</text>
+  </g>
+
+  <!-- USE CASES (CENTER OVALS/PILLS) -->
+  <g id="uc-pills">
+    <rect x="280" y="75" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="95" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC1: Explore Spots, Search &amp; Filter Categories</text>
+
+    <rect x="280" y="112" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="132" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC2: Live GPS Locate &amp; Haversine Distance Calc</text>
+
+    <rect x="280" y="149" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="169" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC3: Turn-by-Turn Road Route Geometry Tracing</text>
+
+    <rect x="280" y="186" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="206" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC4: Authenticate (Sign In / Register / OTP Reset)</text>
+
+    <rect x="280" y="223" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="243" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC5: Watchlist Manager (Bookmarks &amp; Visited Spots)</text>
+
+    <rect x="280" y="260" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="280" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC6: Submit Reviews, Star Ratings &amp; Experiences</text>
+
+    <rect x="280" y="297" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="317" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC7: Propose New Destination Pin &amp; Coordinates</text>
+
+    <rect x="280" y="334" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="354" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC8: Moderate Destination Proposals (Approve/Decline)</text>
+
+    <rect x="280" y="371" width="360" height="30" rx="15" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="391" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">UC9: User Account Lock Management &amp; Audit Logs</text>
+
+    <rect x="280" y="406" width="360" height="26" rx="13" fill="#222" stroke="#444" stroke-width="1"/>
+    <text x="460" y="423" text-anchor="middle" fill="#fff" font-size="10.5" font-weight="600">UC10: Database Snapshot Backup &amp; Live Restore</text>
+  </g>
+
+  <!-- EXTERNAL ENGINES (RIGHT) -->
+  <g transform="translate(695, 110)">
+    <rect width="190" height="60" rx="10" fill="url(#sia-grad-box)" stroke="#3f3f46" stroke-width="1"/>
+    <text x="15" y="28" fill="#10b981" font-size="16">🛣️</text>
+    <text x="45" y="27" fill="#ffffff" font-size="12" font-weight="bold">OSRM Router API</text>
+    <text x="45" y="45" fill="#a1a1aa" font-size="10">GeoJSON driving routes</text>
+  </g>
+  <g transform="translate(695, 230)">
+    <rect width="190" height="60" rx="10" fill="url(#sia-grad-box)" stroke="#3f3f46" stroke-width="1"/>
+    <text x="15" y="28" fill="#38bdf8" font-size="16">☁️</text>
+    <text x="45" y="27" fill="#ffffff" font-size="12" font-weight="bold">Supabase Cloud DB</text>
+    <text x="45" y="45" fill="#a1a1aa" font-size="10">PostgreSQL, RLS, Storage</text>
+  </g>
+
+  <!-- INTERCONNECTION ARROWS -->
+  <!-- Guest to UC1, UC2 -->
+  <path d="M 225 100 L 280 90" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 225 100 L 280 125" stroke="#f43f5e" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+
+  <!-- Tourist to UC1, UC2, UC3, UC4, UC5, UC6 -->
+  <path d="M 225 165 L 280 165" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 225 165 L 280 200" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 225 165 L 280 238" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 225 165 L 280 275" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+
+  <!-- Staff to UC4, UC7 -->
+  <path d="M 225 230 L 280 206" stroke="#10b981" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 225 230 L 280 312" stroke="#10b981" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+
+  <!-- Admin to UC8, UC9, UC10 -->
+  <path d="M 225 295 L 280 349" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 225 295 L 280 385" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 225 295 L 280 419" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+
+  <!-- UC3 to OSRM -->
+  <path d="M 640 164 L 695 140" stroke="#10b981" stroke-dasharray="4 3" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <!-- UC4, UC9, UC10 to Supabase -->
+  <path d="M 640 201 L 695 245" stroke="#38bdf8" stroke-dasharray="4 3" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 640 386 L 695 275" stroke="#38bdf8" stroke-dasharray="4 3" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+  <path d="M 640 419 L 695 285" stroke="#38bdf8" stroke-dasharray="4 3" stroke-width="1.5" marker-end="url(#sia-arrow)"/>
+</svg>`;
+
+                case 'swimlane':
+                    return `
+<svg viewBox="0 0 920 460" class="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sia-grad-red2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#E50914"/><stop offset="100%" stop-color="#880000"/></linearGradient>
+    <marker id="sia-seq-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#E50914"/>
+    </marker>
+    <marker id="sia-seq-arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8"/>
+    </marker>
+  </defs>
+
+  <!-- SWIMLANE COLUMNS -->
+  <!-- 1. Tourist -->
+  <rect x="20" y="20" width="135" height="420" rx="10" fill="#141416" stroke="#27272a"/>
+  <rect x="20" y="20" width="135" height="42" rx="10" fill="#1f1f23"/>
+  <text x="87" y="38" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">👤 Tourist</text>
+  <text x="87" y="52" text-anchor="middle" fill="#71717a" font-size="9">Primary End-User</text>
+  <line x1="87" y1="62" x2="87" y2="430" stroke="#333" stroke-dasharray="3 3"/>
+
+  <!-- 2. Tourism Staff -->
+  <rect x="165" y="20" width="135" height="420" rx="10" fill="#141416" stroke="#27272a"/>
+  <rect x="165" y="20" width="135" height="42" rx="10" fill="#1f1f23"/>
+  <text x="232" y="38" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">🏛️ Tourism Staff</text>
+  <text x="232" y="52" text-anchor="middle" fill="#71717a" font-size="9">LGU Contributor</text>
+  <line x1="232" y1="62" x2="232" y2="430" stroke="#333" stroke-dasharray="3 3"/>
+
+  <!-- 3. System Admin -->
+  <rect x="310" y="20" width="135" height="420" rx="10" fill="#141416" stroke="#27272a"/>
+  <rect x="310" y="20" width="135" height="42" rx="10" fill="#1f1f23"/>
+  <text x="377" y="38" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">🛡️ System Admin</text>
+  <text x="377" y="52" text-anchor="middle" fill="#71717a" font-size="9">Governance &amp; Audits</text>
+  <line x1="377" y1="62" x2="377" y2="430" stroke="#333" stroke-dasharray="3 3"/>
+
+  <!-- 4. ExplorePH Web Engine -->
+  <rect x="455" y="20" width="150" height="420" rx="10" fill="#18181c" stroke="#E50914" stroke-width="1.5"/>
+  <rect x="455" y="20" width="150" height="42" rx="10" fill="url(#sia-grad-red2)"/>
+  <text x="530" y="38" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">📱 ExplorePH Engine</text>
+  <text x="530" y="52" text-anchor="middle" fill="#fecaca" font-size="9">SPA Client &amp; Router</text>
+  <line x1="530" y1="62" x2="530" y2="430" stroke="#555" stroke-dasharray="3 3"/>
+
+  <!-- 5. OSRM Road Router -->
+  <rect x="615" y="20" width="135" height="420" rx="10" fill="#141416" stroke="#27272a"/>
+  <rect x="615" y="20" width="135" height="42" rx="10" fill="#1f1f23"/>
+  <text x="682" y="38" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">🛣️ OSRM Router</text>
+  <text x="682" y="52" text-anchor="middle" fill="#71717a" font-size="9">Geospatial Routing</text>
+  <line x1="682" y1="62" x2="682" y2="430" stroke="#333" stroke-dasharray="3 3"/>
+
+  <!-- 6. Supabase Cloud DB -->
+  <rect x="760" y="20" width="140" height="420" rx="10" fill="#141416" stroke="#27272a"/>
+  <rect x="760" y="20" width="140" height="42" rx="10" fill="#1f1f23"/>
+  <text x="830" y="38" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">🗄️ Supabase Cloud</text>
+  <text x="830" y="52" text-anchor="middle" fill="#71717a" font-size="9">PostgreSQL &amp; Logs</text>
+  <line x1="830" y1="62" x2="830" y2="430" stroke="#333" stroke-dasharray="3 3"/>
+
+  <!-- PHASE 1: CONTENT PROPOSAL (RECT HIGHLIGHT) -->
+  <rect x="25" y="70" width="870" height="100" rx="8" fill="#1f2937" fill-opacity="0.25" stroke="#374151" stroke-dasharray="4 2"/>
+  <text x="35" y="86" fill="#10b981" font-size="10" font-weight="bold">PHASE 1: DESTINATION CONTENT PROPOSAL WORKFLOW</text>
+  <!-- Step 1: Staff -> System -->
+  <line x1="232" y1="105" x2="525" y2="105" stroke="#10b981" stroke-width="2" marker-end="url(#sia-seq-arrow)"/>
+  <text x="375" y="100" text-anchor="middle" fill="#10b981" font-size="9.5" font-weight="bold">1. Pin GPS point, spot metadata, photo upload</text>
+  <!-- Step 2: System -> Supabase -->
+  <line x1="530" y1="135" x2="825" y2="135" stroke="#38bdf8" stroke-width="2" marker-end="url(#sia-seq-arrow-blue)"/>
+  <text x="680" y="130" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="bold">2. INSERT INTO destinations (status='pending') &amp; audit trail</text>
+  <!-- Step 3: Supabase -> Staff Ack -->
+  <line x1="830" y1="155" x2="237" y2="155" stroke="#71717a" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="530" y="150" text-anchor="middle" fill="#9ca3af" font-size="8.5">Proposal submitted successfully (Awaiting moderation)</text>
+
+  <!-- PHASE 2: ADMIN GOVERNANCE & APPROVAL -->
+  <rect x="25" y="180" width="870" height="90" rx="8" fill="#7f1d1d" fill-opacity="0.15" stroke="#991b1b" stroke-dasharray="4 2"/>
+  <text x="35" y="196" fill="#f87171" font-size="10" font-weight="bold">PHASE 2: ADMINISTRATIVE REVIEW &amp; GOVERNANCE</text>
+  <!-- Step 4: Admin -> System -->
+  <line x1="377" y1="215" x2="525" y2="215" stroke="#f87171" stroke-width="2" marker-end="url(#sia-seq-arrow)"/>
+  <text x="450" y="210" text-anchor="middle" fill="#f87171" font-size="9.5" font-weight="bold">3. Admin clicks "Approve Destination"</text>
+  <!-- Step 5: System -> Supabase -->
+  <line x1="530" y1="245" x2="825" y2="245" stroke="#38bdf8" stroke-width="2" marker-end="url(#sia-seq-arrow-blue)"/>
+  <text x="680" y="240" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="bold">4. UPDATE destinations SET status='approved'</text>
+
+  <!-- PHASE 3: TOURIST GPS NAVIGATION & OSRM -->
+  <rect x="25" y="280" width="870" height="145" rx="8" fill="#1e1b4b" fill-opacity="0.25" stroke="#3730a3" stroke-dasharray="4 2"/>
+  <text x="35" y="296" fill="#818cf8" font-size="10" font-weight="bold">PHASE 3: GPS PROXIMITY DETECTION &amp; OSRM ROAD ROUTE TRACING</text>
+  <!-- Step 6: Tourist -> System Locate Me -->
+  <line x1="87" y1="315" x2="525" y2="315" stroke="#3b82f6" stroke-width="2" marker-end="url(#sia-seq-arrow)"/>
+  <text x="300" y="310" text-anchor="middle" fill="#60a5fa" font-size="9.5" font-weight="bold">5. Click "Locate Me" &rarr; Haversine Distance Calc (km)</text>
+  <!-- Step 7: System -> OSRM -->
+  <line x1="530" y1="345" x2="677" y2="345" stroke="#10b981" stroke-width="2" marker-end="url(#sia-seq-arrow)"/>
+  <text x="605" y="340" text-anchor="middle" fill="#34d399" font-size="9.5" font-weight="bold">6. GET /driving coords</text>
+  <!-- Step 8: OSRM -> System -->
+  <line x1="682" y1="375" x2="535" y2="375" stroke="#10b981" stroke-width="2" stroke-dasharray="4 2" marker-end="url(#sia-seq-arrow)"/>
+  <text x="605" y="370" text-anchor="middle" fill="#34d399" font-size="9.5" font-weight="bold">7. Return GeoJSON Road Polyline</text>
+  <!-- Step 9: System -> Tourist Render + Mark Visited -->
+  <line x1="530" y1="405" x2="92" y2="405" stroke="#E50914" stroke-width="2" marker-end="url(#sia-seq-arrow)"/>
+  <text x="310" y="400" text-anchor="middle" fill="#E50914" font-size="9.5" font-weight="bold">8. Draw road geometry polyline on Leaflet &amp; record spot visit</text>
+</svg>`;
+
+                case 'erd':
+                    return `
+<svg viewBox="0 0 920 460" class="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="sia-erd-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- ENTITY 1: USERS -->
+  <g transform="translate(30, 30)" filter="url(#sia-erd-shadow)">
+    <rect width="240" height="200" rx="8" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+    <rect width="240" height="32" rx="8" fill="#E50914"/>
+    <rect y="24" width="240" height="8" fill="#E50914"/>
+    <text x="120" y="21" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">TABLE: USERS</text>
+    <!-- Fields -->
+    <text x="15" y="52" fill="#fbbf24" font-size="11" font-family="monospace">🔑 id: bigint [PK]</text>
+    <text x="15" y="72" fill="#e4e4e7" font-size="11" font-family="monospace">full_name: varchar</text>
+    <text x="15" y="92" fill="#38bdf8" font-size="11" font-family="monospace">username: varchar [UK]</text>
+    <text x="15" y="112" fill="#38bdf8" font-size="11" font-family="monospace">email: varchar [UK]</text>
+    <text x="15" y="132" fill="#a1a1aa" font-size="11" font-family="monospace">role: 'admin'|'staff'|'user'</text>
+    <text x="15" y="152" fill="#f87171" font-size="11" font-family="monospace">failed_attempts: int</text>
+    <text x="15" y="172" fill="#f87171" font-size="11" font-family="monospace">lockout_until: timestamptz</text>
+    <text x="15" y="192" fill="#a1a1aa" font-size="11" font-family="monospace">otp_code: varchar</text>
+  </g>
+
+  <!-- ENTITY 2: DESTINATIONS -->
+  <g transform="translate(340, 30)" filter="url(#sia-erd-shadow)">
+    <rect width="240" height="210" rx="8" fill="#18181b" stroke="#E50914" stroke-width="1.8"/>
+    <rect width="240" height="32" rx="8" fill="#E50914"/>
+    <rect y="24" width="240" height="8" fill="#E50914"/>
+    <text x="120" y="21" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">TABLE: DESTINATIONS</text>
+    <!-- Fields -->
+    <text x="15" y="52" fill="#fbbf24" font-size="11" font-family="monospace">🔑 id: bigint [PK]</text>
+    <text x="15" y="72" fill="#34d399" font-size="11" font-family="monospace">🔗 submitted_by: bigint [FK]</text>
+    <text x="15" y="92" fill="#e4e4e7" font-size="11" font-family="monospace">name: varchar</text>
+    <text x="15" y="112" fill="#e4e4e7" font-size="11" font-family="monospace">category: varchar</text>
+    <text x="15" y="132" fill="#a1a1aa" font-size="11" font-family="monospace">location_address: text</text>
+    <text x="15" y="152" fill="#38bdf8" font-size="11" font-family="monospace">latitude: double_precision</text>
+    <text x="15" y="172" fill="#38bdf8" font-size="11" font-family="monospace">longitude: double_precision</text>
+    <text x="15" y="192" fill="#e4e4e7" font-size="11" font-family="monospace">rating: numeric(3,2)</text>
+    <text x="15" y="212" fill="#f59e0b" font-size="11" font-family="monospace">status: 'pending'|'approved'</text>
+  </g>
+
+  <!-- ENTITY 3: LOG_TRAILS -->
+  <g transform="translate(30, 260)" filter="url(#sia-erd-shadow)">
+    <rect width="240" height="170" rx="8" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+    <rect width="240" height="32" rx="8" fill="#27272a"/>
+    <rect y="24" width="240" height="8" fill="#27272a"/>
+    <text x="120" y="21" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">TABLE: LOG_TRAILS</text>
+    <!-- Fields -->
+    <text x="15" y="52" fill="#fbbf24" font-size="11" font-family="monospace">🔑 id: bigint [PK]</text>
+    <text x="15" y="72" fill="#34d399" font-size="11" font-family="monospace">🔗 user_id: bigint [FK]</text>
+    <text x="15" y="92" fill="#e4e4e7" font-size="11" font-family="monospace">username_used: varchar</text>
+    <text x="15" y="112" fill="#f87171" font-size="11" font-family="monospace">action: varchar (IAS-1)</text>
+    <text x="15" y="132" fill="#a1a1aa" font-size="11" font-family="monospace">details: text</text>
+    <text x="15" y="152" fill="#a1a1aa" font-size="11" font-family="monospace">ip_address: varchar</text>
+    <text x="15" y="172" fill="#71717a" font-size="11" font-family="monospace">created_at: timestamptz</text>
+  </g>
+
+  <!-- ENTITY 4: REVIEWS -->
+  <g transform="translate(650, 30)" filter="url(#sia-erd-shadow)">
+    <rect width="240" height="150" rx="8" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+    <rect width="240" height="32" rx="8" fill="#27272a"/>
+    <rect y="24" width="240" height="8" fill="#27272a"/>
+    <text x="120" y="21" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">TABLE: REVIEWS</text>
+    <!-- Fields -->
+    <text x="15" y="52" fill="#fbbf24" font-size="11" font-family="monospace">🔑 id: bigint [PK]</text>
+    <text x="15" y="72" fill="#34d399" font-size="11" font-family="monospace">🔗 destination_id: bigint [FK]</text>
+    <text x="15" y="92" fill="#34d399" font-size="11" font-family="monospace">🔗 user_id: bigint [FK]</text>
+    <text x="15" y="112" fill="#fbbf24" font-size="11" font-family="monospace">rating: int (1..5)</text>
+    <text x="15" y="132" fill="#e4e4e7" font-size="11" font-family="monospace">comment: text</text>
+  </g>
+
+  <!-- ENTITY 5: USER_BOOKMARKS & SPOT_VISITS -->
+  <g transform="translate(650, 210)" filter="url(#sia-erd-shadow)">
+    <rect width="240" height="105" rx="8" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+    <rect width="240" height="28" rx="8" fill="#27272a"/>
+    <rect y="20" width="240" height="8" fill="#27272a"/>
+    <text x="120" y="19" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">TABLE: USER_BOOKMARKS</text>
+    <text x="15" y="48" fill="#fbbf24" font-size="11" font-family="monospace">🔑 id: bigint [PK]</text>
+    <text x="15" y="68" fill="#34d399" font-size="11" font-family="monospace">🔗 user_id: bigint [FK]</text>
+    <text x="15" y="88" fill="#34d399" font-size="11" font-family="monospace">🔗 destination_id: bigint [FK]</text>
+  </g>
+
+  <g transform="translate(650, 335)" filter="url(#sia-erd-shadow)">
+    <rect width="240" height="95" rx="8" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+    <rect width="240" height="28" rx="8" fill="#27272a"/>
+    <rect y="20" width="240" height="8" fill="#27272a"/>
+    <text x="120" y="19" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">TABLE: SPOT_VISITS</text>
+    <text x="15" y="48" fill="#fbbf24" font-size="11" font-family="monospace">🔑 id: bigint [PK]</text>
+    <text x="15" y="68" fill="#34d399" font-size="11" font-family="monospace">🔗 user_id: bigint [FK]</text>
+    <text x="15" y="88" fill="#34d399" font-size="11" font-family="monospace">🔗 destination_id: bigint [FK]</text>
+  </g>
+
+  <!-- CARDINALITY CONNECTORS -->
+  <!-- USERS ||--o{ DESTINATIONS -->
+  <line x1="270" y1="100" x2="340" y2="100" stroke="#E50914" stroke-width="2"/>
+  <text x="305" y="93" text-anchor="middle" fill="#E50914" font-size="10" font-weight="bold">1 : N</text>
+
+  <!-- USERS ||--o{ LOG_TRAILS -->
+  <line x1="150" y1="230" x2="150" y2="260" stroke="#a1a1aa" stroke-width="2"/>
+  <text x="165" y="248" fill="#a1a1aa" font-size="10">1 : N</text>
+
+  <!-- DESTINATIONS ||--o{ REVIEWS -->
+  <line x1="580" y1="90" x2="650" y2="90" stroke="#E50914" stroke-width="2"/>
+  <text x="615" y="83" text-anchor="middle" fill="#E50914" font-size="10" font-weight="bold">1 : N</text>
+
+  <!-- DESTINATIONS ||--o{ USER_BOOKMARKS -->
+  <path d="M 580 140 L 615 140 L 615 250 L 650 250" fill="none" stroke="#a1a1aa" stroke-width="1.5"/>
+  <!-- DESTINATIONS ||--o{ SPOT_VISITS -->
+  <path d="M 580 180 L 600 180 L 600 370 L 650 370" fill="none" stroke="#a1a1aa" stroke-width="1.5"/>
+</svg>`;
+
+                case 'flowchart':
+                    return `
+<svg viewBox="0 0 920 460" class="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="fc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#E50914"/>
+    </marker>
+    <marker id="fc-arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"/>
+    </marker>
+  </defs>
+
+  <!-- FLOWCHART NODES -->
+  <!-- 1. Start -->
+  <rect x="20" y="30" width="120" height="40" rx="20" fill="#E50914" stroke="#ff4d4d"/>
+  <text x="80" y="55" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">Start / Open App</text>
+
+  <!-- 2. Session Check -->
+  <polygon points="215,25 285,50 215,75 145,50" fill="#18181b" stroke="#eab308" stroke-width="1.5"/>
+  <text x="215" y="47" text-anchor="middle" fill="#facc15" font-size="10" font-weight="bold">Active</text>
+  <text x="215" y="59" text-anchor="middle" fill="#facc15" font-size="10" font-weight="bold">Session?</text>
+
+  <!-- 3. Auth Choice -->
+  <polygon points="360,25 430,50 360,75 290,50" fill="#18181b" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="360" y="47" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="bold">Action</text>
+  <text x="360" y="59" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="bold">Choice?</text>
+
+  <!-- 4. Guest Mode -->
+  <rect x="475" y="15" width="135" height="35" rx="6" fill="#27272a" stroke="#52525b"/>
+  <text x="542" y="37" text-anchor="middle" fill="#e4e4e7" font-size="10" font-weight="bold">Guest Mode (Public)</text>
+
+  <rect x="650" y="15" width="150" height="35" rx="6" fill="#18181b" stroke="#52525b"/>
+  <text x="725" y="37" text-anchor="middle" fill="#a1a1aa" font-size="10">Browse Spots &amp; Haversine</text>
+
+  <!-- 5. Enter Creds -->
+  <rect x="290" y="110" width="140" height="36" rx="6" fill="#18181b" stroke="#E50914"/>
+  <text x="360" y="132" text-anchor="middle" fill="#fff" font-size="10.5" font-weight="bold">Enter Credentials</text>
+
+  <!-- 6. Account Lock Check -->
+  <polygon points="360,175 430,200 360,225 290,200" fill="#18181b" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="360" y="197" text-anchor="middle" fill="#f87171" font-size="10" font-weight="bold">Account</text>
+  <text x="360" y="209" text-anchor="middle" fill="#f87171" font-size="10" font-weight="bold">Locked?</text>
+
+  <!-- Lock Timer Display -->
+  <rect x="475" y="182" width="155" height="36" rx="6" fill="#450a0a" stroke="#dc2626"/>
+  <text x="552" y="204" text-anchor="middle" fill="#fca5a5" font-size="10" font-weight="bold">Lockout Timer (1m/5m/15m)</text>
+
+  <!-- 7. Verify Pass & CAPTCHA -->
+  <polygon points="360,260 435,285 360,310 285,285" fill="#18181b" stroke="#eab308" stroke-width="1.5"/>
+  <text x="360" y="282" text-anchor="middle" fill="#facc15" font-size="10" font-weight="bold">Validate Pass</text>
+  <text x="360" y="294" text-anchor="middle" fill="#facc15" font-size="10" font-weight="bold">&amp; CAPTCHA</text>
+
+  <!-- Failure escalation -->
+  <rect x="135" y="267" width="120" height="36" rx="6" fill="#27272a" stroke="#ef4444"/>
+  <text x="195" y="289" text-anchor="middle" fill="#f87171" font-size="10">failed_attempts += 1</text>
+
+  <!-- Success & Role Routing -->
+  <rect x="360" y="340" width="160" height="40" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+  <text x="440" y="358" text-anchor="middle" fill="#6ee7b7" font-size="10.5" font-weight="bold">Login Success &amp; Reset Fails</text>
+  <text x="440" y="372" text-anchor="middle" fill="#a7f3d0" font-size="9">15-min Inactivity Watchdog On</text>
+
+  <!-- Role Dashboards -->
+  <rect x="580" y="310" width="145" height="34" rx="6" fill="#18181b" stroke="#f59e0b"/>
+  <text x="652" y="331" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="bold">Admin Console (SIA, DB)</text>
+
+  <rect x="580" y="360" width="145" height="34" rx="6" fill="#18181b" stroke="#3b82f6"/>
+  <text x="652" y="381" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="bold">Tourist Dashboard (GPS)</text>
+
+  <!-- OSRM Tracing Engine -->
+  <rect x="765" y="360" width="135" height="55" rx="6" fill="#1f1f23" stroke="#10b981"/>
+  <text x="832" y="380" text-anchor="middle" fill="#34d399" font-size="10" font-weight="bold">OSRM Road Router</text>
+  <text x="832" y="396" text-anchor="middle" fill="#9ca3af" font-size="9">Trace Road Polyline</text>
+
+  <!-- CONNECTIONS -->
+  <line x1="140" y1="50" x2="145" y2="50" stroke="#E50914" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <line x1="285" y1="50" x2="290" y2="50" stroke="#E50914" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <text x="287" y="42" fill="#fff" font-size="9">No</text>
+  <line x1="215" y1="75" x2="215" y2="420" stroke="#10b981" stroke-width="1.5"/>
+  <line x1="215" y1="420" x2="652" y2="420" stroke="#10b981" stroke-width="1.5"/>
+  <line x1="652" y1="420" x2="652" y2="395" stroke="#10b981" stroke-width="1.5" marker-end="url(#fc-arrow-green)"/>
+  <text x="220" y="90" fill="#10b981" font-size="9">Yes (Active Session)</text>
+
+  <line x1="430" y1="40" x2="475" y2="30" stroke="#71717a" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <line x1="610" y1="32" x2="650" y2="32" stroke="#71717a" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <line x1="360" y1="75" x2="360" y2="110" stroke="#E50914" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <text x="365" y="92" fill="#fff" font-size="9">Sign In</text>
+
+  <line x1="360" y1="146" x2="360" y2="175" stroke="#E50914" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <line x1="430" y1="200" x2="475" y2="200" stroke="#ef4444" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <text x="445" y="193" fill="#ef4444" font-size="9">Yes</text>
+  <line x1="360" y1="225" x2="360" y2="260" stroke="#10b981" stroke-width="1.5" marker-end="url(#fc-arrow-green)"/>
+  <text x="365" y="242" fill="#10b981" font-size="9">No</text>
+
+  <line x1="285" y1="285" x2="255" y2="285" stroke="#ef4444" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <text x="268" y="278" fill="#ef4444" font-size="9">Fail</text>
+  <line x1="195" y1="267" x2="195" y2="128" stroke="#ef4444" stroke-width="1.5"/>
+  <line x1="195" y1="128" x2="290" y2="128" stroke="#ef4444" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+
+  <line x1="360" y1="310" x2="400" y2="340" stroke="#10b981" stroke-width="1.5" marker-end="url(#fc-arrow-green)"/>
+  <text x="390" y="325" fill="#10b981" font-size="9">Pass</text>
+
+  <line x1="520" y1="350" x2="580" y2="330" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <line x1="520" y1="370" x2="580" y2="375" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#fc-arrow)"/>
+  <line x1="725" y1="378" x2="765" y2="378" stroke="#10b981" stroke-width="1.5" marker-end="url(#fc-arrow-green)"/>
+</svg>`;
+
+                case 'network':
+                    return `
+<svg viewBox="0 0 920 460" class="w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="net-grad-node" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#222"/><stop offset="100%" stop-color="#141414"/></linearGradient>
+    <filter id="net-glow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#E50914" flood-opacity="0.3"/></filter>
+    <marker id="net-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#E50914"/>
+    </marker>
+    <marker id="net-arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8"/>
+    </marker>
+  </defs>
+
+  <!-- TIER 1: CLIENT DEVICE LAYER -->
+  <rect x="20" y="20" width="160" height="420" rx="14" fill="#141416" stroke="#27272a"/>
+  <rect x="20" y="20" width="160" height="32" rx="14" fill="#1f1f23"/>
+  <text x="100" y="41" text-anchor="middle" fill="#a1a1aa" font-size="10.5" font-weight="bold">1. CLIENT LAYER</text>
+
+  <g transform="translate(30, 80)">
+    <rect width="140" height="70" rx="8" fill="url(#net-grad-node)" stroke="#3f3f46"/>
+    <text x="15" y="32" fill="#38bdf8" font-size="18">📱</text>
+    <text x="45" y="30" fill="#fff" font-size="11" font-weight="bold">Mobile Device</text>
+    <text x="45" y="46" fill="#a1a1aa" font-size="9.5">GPS / Geolocation</text>
+    <text x="45" y="60" fill="#22c55e" font-size="8.5">Browser Client</text>
+  </g>
+
+  <g transform="translate(30, 240)">
+    <rect width="140" height="70" rx="8" fill="url(#net-grad-node)" stroke="#3f3f46"/>
+    <text x="15" y="32" fill="#eab308" font-size="18">💻</text>
+    <text x="45" y="30" fill="#fff" font-size="11" font-weight="bold">Admin Desktop</text>
+    <text x="45" y="46" fill="#a1a1aa" font-size="9.5">Management Portal</text>
+    <text x="45" y="60" fill="#eab308" font-size="8.5">TLS 1.3 / HTTPS</text>
+  </g>
+
+  <!-- TIER 2: PERIMETER SECURITY & CDN -->
+  <rect x="210" y="20" width="160" height="420" rx="14" fill="#141416" stroke="#27272a"/>
+  <rect x="210" y="20" width="160" height="32" rx="14" fill="#1f1f23"/>
+  <text x="290" y="41" text-anchor="middle" fill="#f87171" font-size="10.5" font-weight="bold">2. PERIMETER &amp; CDN</text>
+
+  <g transform="translate(220, 110)">
+    <rect width="140" height="70" rx="8" fill="url(#net-grad-node)" stroke="#f87171"/>
+    <text x="15" y="32" fill="#f87171" font-size="18">🌐</text>
+    <text x="45" y="30" fill="#fff" font-size="11" font-weight="bold">Cloudflare CDN</text>
+    <text x="45" y="46" fill="#a1a1aa" font-size="9.5">DDoS Mitigation</text>
+    <text x="45" y="60" fill="#f87171" font-size="8.5">Port 443 / SSL Term</text>
+  </g>
+
+  <g transform="translate(220, 240)">
+    <rect width="140" height="70" rx="8" fill="url(#net-grad-node)" stroke="#3f3f46"/>
+    <text x="15" y="32" fill="#f59e0b" font-size="18">🛡️</text>
+    <text x="45" y="30" fill="#fff" font-size="11" font-weight="bold">Web Firewall</text>
+    <text x="45" y="46" fill="#a1a1aa" font-size="9.5">WAF Packet Inspect</text>
+    <text x="45" y="60" fill="#e4e4e7" font-size="8.5">XSS / SQLi Filtering</text>
+  </g>
+
+  <!-- TIER 3: APPLICATION HOSTING TIER -->
+  <rect x="400" y="20" width="160" height="420" rx="14" fill="#18181c" stroke="#E50914" stroke-width="1.5" filter="url(#net-glow)"/>
+  <rect x="400" y="20" width="160" height="32" rx="14" fill="#E50914"/>
+  <text x="480" y="41" text-anchor="middle" fill="#fff" font-size="10.5" font-weight="bold">3. WEB APP HOST</text>
+
+  <g transform="translate(410, 110)">
+    <rect width="140" height="70" rx="8" fill="url(#net-grad-node)" stroke="#E50914"/>
+    <text x="15" y="32" fill="#E50914" font-size="18">🖥️</text>
+    <text x="45" y="30" fill="#fff" font-size="11" font-weight="bold">XAMPP Apache</text>
+    <text x="45" y="46" fill="#a1a1aa" font-size="9.5">HTTP Server / PHP</text>
+    <text x="45" y="60" fill="#fff" font-size="8.5">Port 80 / 443 Host</text>
+  </g>
+
+  <g transform="translate(410, 240)">
+    <rect width="140" height="70" rx="8" fill="url(#net-grad-node)" stroke="#52525b"/>
+    <text x="15" y="32" fill="#38bdf8" font-size="18">📦</text>
+    <text x="45" y="30" fill="#fff" font-size="11" font-weight="bold">Single Page App</text>
+    <text x="45" y="46" fill="#a1a1aa" font-size="9.5">ExplorePH SPA Engine</text>
+    <text x="45" y="60" fill="#a1a1aa" font-size="8.5">Tailwind &amp; Leaflet</text>
+  </g>
+
+  <!-- TIER 4: EXTERNAL GEOSPATIAL CLOUD -->
+  <rect x="590" y="20" width="140" height="200" rx="14" fill="#141416" stroke="#27272a"/>
+  <rect x="590" y="20" width="140" height="32" rx="14" fill="#1f1f23"/>
+  <text x="660" y="41" text-anchor="middle" fill="#10b981" font-size="10" font-weight="bold">4. GEOSPATIAL</text>
+
+  <g transform="translate(600, 65)">
+    <rect width="120" height="42" rx="6" fill="#222" stroke="#333"/>
+    <text x="10" y="26" fill="#10b981" font-size="14">🛣️</text>
+    <text x="32" y="25" fill="#fff" font-size="10" font-weight="bold">OSRM Router</text>
+  </g>
+  <g transform="translate(600, 115)">
+    <rect width="120" height="42" rx="6" fill="#222" stroke="#333"/>
+    <text x="10" y="26" fill="#3b82f6" font-size="14">🗺️</text>
+    <text x="32" y="25" fill="#fff" font-size="10" font-weight="bold">OSM Tiles CDN</text>
+  </g>
+  <g transform="translate(600, 165)">
+    <rect width="120" height="42" rx="6" fill="#222" stroke="#333"/>
+    <text x="10" y="26" fill="#eab308" font-size="14">📍</text>
+    <text x="32" y="25" fill="#fff" font-size="10" font-weight="bold">Nominatim API</text>
+  </g>
+
+  <!-- TIER 5: MANAGED CLOUD DATABASE (SUPABASE) -->
+  <rect x="590" y="235" width="140" height="205" rx="14" fill="#141416" stroke="#27272a"/>
+  <rect x="590" y="235" width="140" height="32" rx="14" fill="#1f1f23"/>
+  <text x="660" y="256" text-anchor="middle" fill="#38bdf8" font-size="10" font-weight="bold">5. SUPABASE CLOUD</text>
+
+  <g transform="translate(600, 275)">
+    <rect width="120" height="42" rx="6" fill="#222" stroke="#38bdf8"/>
+    <text x="10" y="26" fill="#38bdf8" font-size="14">🚪</text>
+    <text x="32" y="25" fill="#fff" font-size="9.5" font-weight="bold">GoTrue / PostgREST</text>
+  </g>
+  <g transform="translate(600, 325)">
+    <rect width="120" height="42" rx="6" fill="#222" stroke="#333"/>
+    <text x="10" y="26" fill="#38bdf8" font-size="14">🐘</text>
+    <text x="32" y="25" fill="#fff" font-size="9.5" font-weight="bold">PostgreSQL (RLS)</text>
+  </g>
+  <g transform="translate(600, 375)">
+    <rect width="120" height="42" rx="6" fill="#222" stroke="#333"/>
+    <text x="10" y="26" fill="#eab308" font-size="14">🗄️</text>
+    <text x="32" y="25" fill="#fff" font-size="9.5" font-weight="bold">Photos S3 Bucket</text>
+  </g>
+
+  <!-- TRANSPORT PROTOCOL ARROWS -->
+  <!-- Client to Perimeter -->
+  <line x1="170" y1="115" x2="220" y2="135" stroke="#E50914" stroke-width="2" marker-end="url(#net-arrow)"/>
+  <line x1="170" y1="275" x2="220" y2="155" stroke="#E50914" stroke-width="2" marker-end="url(#net-arrow)"/>
+  <text x="195" y="105" text-anchor="middle" fill="#a1a1aa" font-size="8.5" font-weight="bold">HTTPS 443</text>
+
+  <!-- Perimeter to Web Host -->
+  <line x1="360" y1="145" x2="410" y2="145" stroke="#E50914" stroke-width="2" marker-end="url(#net-arrow)"/>
+  <line x1="290" y1="180" x2="290" y2="240" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#net-arrow)"/>
+
+  <!-- Web App to External Services -->
+  <line x1="550" y1="130" x2="600" y2="90" stroke="#10b981" stroke-width="1.5" marker-end="url(#net-arrow)"/>
+  <line x1="550" y1="145" x2="600" y2="135" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#net-arrow)"/>
+  <line x1="550" y1="160" x2="600" y2="180" stroke="#eab308" stroke-width="1.5" marker-end="url(#net-arrow)"/>
+
+  <!-- Web App to Supabase -->
+  <line x1="550" y1="275" x2="600" y2="295" stroke="#38bdf8" stroke-width="2" marker-end="url(#net-arrow-blue)"/>
+  <text x="575" y="268" text-anchor="middle" fill="#38bdf8" font-size="8.5" font-weight="bold">JWT REST</text>
+</svg>`;
+
+                default:
+                    return '';
+            }
+        }
+
         async function renderSiaDiagram(key) {
             initSiaPanZoomListeners();
             resetSiaZoomPan();
@@ -2614,21 +3310,26 @@
             document.getElementById('sia-diagram-desc').innerHTML = def.desc;
 
             const renderContainer = document.getElementById('sia-mermaid-render');
-            renderContainer.innerHTML = `<div class="text-xs text-zinc-400 py-8 animate-pulse flex items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin text-netflixRed"></i> Rendering architecture diagram...</div>`;
-            lucide.createIcons();
+            
+            // Clean up any stray Mermaid error popups
+            document.querySelectorAll('body > div[id^="dmermaid"], body > svg[id^="dmermaid"], body > .error-icon, .mermaid .error-icon').forEach(el => el.remove());
 
-            try {
-                if (window.mermaid) {
+            // Always render the crisp direct SVG architecture diagram
+            const directSvg = getDirectSiaSvg(key);
+            if (directSvg) {
+                renderContainer.innerHTML = directSvg;
+            } else if (window.mermaid) {
+                try {
                     const uniqueId = `mermaid-svg-${Date.now()}`;
                     const { svg } = await mermaid.render(uniqueId, def.code);
-                    renderContainer.innerHTML = svg;
-                } else {
-                    renderContainer.innerHTML = `<pre class="text-[10px] text-zinc-300 font-mono text-left p-3 overflow-x-auto">${def.code}</pre>`;
+                    if (svg && svg.includes('<svg')) {
+                        renderContainer.innerHTML = svg;
+                    }
+                } catch (err) {
+                    renderContainer.innerHTML = `<pre class="text-[11px] text-zinc-300 font-mono text-left p-4 leading-relaxed bg-zinc-900/80 rounded-xl border border-zinc-800">${def.code}</pre>`;
                 }
-            } catch (err) {
-                console.error("Mermaid render error:", err);
-                renderContainer.innerHTML = `<pre class="text-[10px] text-zinc-300 font-mono text-left p-3 overflow-x-auto">${def.code}</pre>`;
             }
+            document.querySelectorAll('body > div[id^="dmermaid"], body > svg[id^="dmermaid"], body > .error-icon, .mermaid .error-icon').forEach(el => el.remove());
         }
 
         // HAVERSINE DISTANCE FORMULA (Calculates km between two GPS coordinates)
